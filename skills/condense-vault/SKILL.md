@@ -86,8 +86,8 @@ The specifics that matter most:
   `Decisions Index.md`, `Threads Index.md`, or the root `Progress Log.md`. They are
   rebuilt from the notes and carry no original content. Condensing one just gets overwritten;
   deleting one loses nothing but produces confusing churn.
-- **Never delete `.vault-config.json`.** Removing it silently reverts the workspace to the flat
-  layout in every skill's eyes.
+- **Never delete `.vault-config.json`.** It is the only thing marking a workspace as a workspace;
+  without it every skill treats the folder as an unsupported pre-1.0 layout.
 - `Log/<date>.md` notes are ordinary content: condense old ones, but deleting a day's log deletes
   the only record of that day.
 

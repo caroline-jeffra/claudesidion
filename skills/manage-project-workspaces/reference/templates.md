@@ -5,12 +5,7 @@
 - Overview.md
 - Progress Log.md
 - `.vault-config.json`
-- Decisions.md / Open Threads.md — **retired flat templates, kept for reading existing workspaces**
 - Worked examples
-
-New workspaces are scaffolded **structured** (see
-[structure.md](structure.md)). The flat templates below are retained only so existing flat
-workspaces stay readable until they are migrated; do not create a new workspace from them.
 
 ## Index note (`Projects/_index.md`)
 
@@ -155,50 +150,6 @@ Written at scaffold time; this file is what marks a workspace structured.
 
 The folder skeleton is fixed by the contract and is not configured here. What varies per project is
 the vocabulary: `topics`, `min_hits`, `title_weight`, and optionally `root_notes`.
-
-## Retired flat templates
-
-The two templates below build the stacked files of the **flat** layout. They are retired: new
-workspaces never use them. They remain documented so an existing flat workspace can still be read.
-
-## Decisions.md
-
-```markdown
----
-created: YYYY-MM-DD
-tags: [project, decisions]
----
-
-# Decisions — <repo>
-```
-
-Each entry:
-
-```markdown
-## YYYY-MM-DD — <short decision title>
-
-- **Decision:** <what was decided>
-- **Rationale:** <why>
-- **Alternatives:** <what was considered and rejected>
-- **From:** [[Progress Log#YYYY-MM-DD]]
-```
-
-## Open Threads.md
-
-```markdown
----
-created: YYYY-MM-DD
-tags: [project, todo]
----
-
-# Open Threads — <repo>
-
-## Open
-- [ ] <blocker / question / next action>
-
-## Done
-- [x] <resolved item — kept for history>
-```
 
 ## Worked examples
 

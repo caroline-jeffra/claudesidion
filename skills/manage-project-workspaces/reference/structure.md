@@ -1,50 +1,23 @@
 # Workspace structure contract
 
-The **structured layout** is the only layout new workspaces are created in and the only one written
-to. The **flat layout** is retired but still readable, so a skill must detect which one it is dealing
-with before it reads — and, on finding a flat one, offer to migrate rather than writing to it.
+Every workspace uses the structured layout: one note per fact, filed by document type, with derived
+metadata in frontmatter. The flat layout was retired in 1.0.
 
 ## Detecting the layout
 
-A workspace uses the **structured layout** if it contains `.vault-config.json`. Otherwise it uses
-the **flat layout**.
+A workspace is valid if it contains `.vault-config.json`. A workspace without one predates 1.0 and
+is **not supported** — it can neither be read nor written. Tell the user to pin to `v0.4.x`, run
+`migrate-workspace`, and upgrade again.
 
 ```bash
-if [ -f "$WORKSPACE/.vault-config.json" ]; then
-  # structured layout
-else
-  # flat layout
-fi
+[ -f "$WORKSPACE/.vault-config.json" ] || echo "unsupported pre-1.0 workspace"
 ```
 
-Never guess from the presence of a folder. `Tickets/` exists in both layouts.
+Never guess from the presence of a folder — only `.vault-config.json` marks a workspace.
 
 ---
 
-## Flat layout (retired — read only)
-
-The original layout. **Nothing is written to it and nothing new is created in it**; a write triggers
-the migration offer in the main skill. It remains documented here because existing workspaces must
-stay readable until they are migrated.
-
-Four files in the workspace root, each stacking many entries:
-
-- `Overview.md` — what the repo is, current focus, trackers.
-- `Progress Log.md` — dated `## YYYY-MM-DD` entries, newest first.
-- `Decisions.md` — stacked decision sections.
-- `Open Threads.md` — `- [ ]` / `- [x]` checkboxes under `## Open` / `## Done`.
-
-Plus `Tickets/` and `Notes/` subfolders.
-
-Read it to answer status and "what's next" questions. **Do not write to it** — not an appended log
-entry, not a ticked checkbox, not a decision. Offer the migration instead.
-
-**Do not add `type:`, `topics:`, or `status:` frontmatter to a flat-layout workspace.** Those fields
-are only read in the structured layout, and a partially-annotated flat workspace is neither layout.
-
----
-
-## Structured layout (the default)
+## Structured layout
 
 One note per fact, filed by document type, with derived metadata in frontmatter.
 
@@ -101,6 +74,24 @@ Choosing between the near-synonyms:
   Is it a standing norm with no decision event? → `convention`.
 
 ---
+
+## Linking between notes
+
+`[[name]]` is resolved by Obsidian searching the vault, so how you write a link depends on whether
+the name is unique.
+
+| Target | Write | Why |
+| --- | --- | --- |
+| A note in `Decisions/`, `Threads/`, `Log/`, `Notes/`, `Research/` | `[[kebab-case-name]]` | One note per fact means names are unique; a bare link survives a workspace rename |
+| `Overview`, `Progress Log`, or any generated index | `[[Workspace/Overview]]` | These exist once per workspace by design, so the bare name is ambiguous vault-wide |
+| The current workspace's own structural file, linked from inside it | `[[Overview]]` is fine | Obsidian resolves same-folder first |
+
+Obsidian has **no `../` syntax** for wikilinks — a vault-relative path is the only disambiguator.
+
+**The failure this prevents.** A bare `[[Decisions]]` resolved against the whole vault binds to
+whichever workspace matches first. It resolves *successfully*, so "do the links work?" reports
+healthy while the link points at a different project's notes. Silent cross-project links are worse
+than broken ones: a broken link is noticed, a wrong one is trusted.
 
 ## Frontmatter contract
 
@@ -196,7 +187,7 @@ Only record a supersession you can evidence. A wrong one is worse than none.
 ### When the superseded note does not exist
 
 Common, and easy to get wrong. The user says "this replaces our old decision that X", but no note
-records X — the old decision was never written down, or lives in a flat-layout workspace, or only
+records X — the old decision was never written down, or only
 appears in a log entry.
 
 **Do not fabricate a note to supersede, and do not silently drop the claim.** Both lose information.

@@ -38,7 +38,7 @@ larger, specified set of fields (`type`, `status`, `topics`, `tickets`, and othe
 by the `vault-maintain` hook and by the generated indexes. That contract is defined in
 [manage-project-workspaces/reference/structure.md](../../manage-project-workspaces/reference/structure.md).
 The rule above still holds everywhere else in the vault, including `Notes/`, `Resources/` and
-`Inbox/`, and in flat-layout workspaces.
+`Inbox/`.
 
 ## Tag vocabulary
 

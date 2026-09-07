@@ -12,7 +12,6 @@ home for your work — notes, per-repo workspaces, and imported project context.
 | **ingest-project-docs** | Bootstraps a repo's workspace from context that already exists: open issues/milestones/PRs (GitHub `gh` / GitLab `glab`), in-repo docs (README, `docs/`, `CLAUDE.md`, `.claude/`), and scratch files. |
 | **summarize-contribution** | Writes or updates a career-facing summary of your contribution to a project, one file per project in `Contributions/`. Evidence comes from git history (identity discovery, authored vs. shipped vs. integrated), the project workspace, and any tracker you have CLI access to. Structured around the project's major efforts, with liftable text for CV, LinkedIn, 360 reviews, and blog topics. Updates integrate into the existing text rather than appending. |
 | **condense-vault** | Weekly cleanup: condenses stale content (untouched >3 months) down to bullet points. Outside the project workspaces — in `Archived/`, `Inbox/`, `Resources/` and loose root notes — it also deletes records of finished work. **Project workspaces are condensed but never deleted from**; a workspace note records why work happened, which outlives the work itself. Deletes only when the vault is a git repository, since git history is what makes a deletion recoverable; an unversioned vault gets condensed instead. |
-| **migrate-workspace** | Converts one project workspace from the retired flat layout (stacked `Progress Log.md`, `Decisions.md`, `Open Threads.md`) to the structured layout. A one-time transition tool — see "Workspace layouts" below. |
 
 ## Prerequisites
 
@@ -115,8 +114,8 @@ hook commits changed; or a skill trigger changed so a phrase that used to invoke
 New skills, new hooks and additive frontmatter are **minor**.
 
 While the version is `0.x`, **expect breaking changes to the vault layout** between minor versions.
-The structured layout in particular is young, and `migrate-workspace` exists because the first such
-change has already happened once.
+The workspace layout in particular is young; 1.0's removal of the flat layout is the first such
+change, and there may be others.
 
 Each release is tagged `vX.Y.Z` in git, and the `version` field in `plugin.json` is bumped to match.
 Since updates are version-gated, a commit that does not bump the version does not reach installed
@@ -134,7 +133,6 @@ Once installed and your vault path is set, the skills activate from natural requ
 - "ingest this project" / "bootstrap the workspace" → **ingest-project-docs**
 - "summarize my contribution" / "write a CV summary for this project" / "what should I put on my CV" → **summarize-contribution**
 - "condense the vault" / "run the vault cleanup" → **condense-vault**
-- "migrate this workspace" / "convert this project to the new structure" → **migrate-workspace**
 
 The vault links *out* to Jira/GitHub/GitLab; it never pushes changes back to them.
 
@@ -142,15 +140,14 @@ The vault links *out* to Jira/GitHub/GitLab; it never pushes changes back to the
 
 Everything written to the vault follows two rules. First, **no hard line breaks inside a text block** — each paragraph or bullet is one source line, because Obsidian soft-wraps and hard-wrapped prose reads badly there. Second, **ADHD-friendly prose** — clarity, not brevity: short one-idea sentences, the point stated first, visible structure (headings, bullets, bold key terms), and explanations spelled out rather than compressed. The `condense-vault` skill also reformats hard-wrapped files it touches to this style.
 
-### Workspace layouts
+### Workspace layout
 
-Every **new** workspace is created in the **structured** layout: one note per fact, filed by document type into `Log/`, `Decisions/`, `Threads/`, `Tickets/`, `Research/` and `Notes/`, with `type:`/`status:` frontmatter and generated Topic, Tickets, Decisions and Threads indexes. A `.vault-config.json` in the workspace folder is what marks it structured.
+A project workspace is **one note per fact**, filed by document type into `Log/`, `Decisions/`, `Threads/`, `Tickets/`, `Research/` and `Notes/`, with `type:`/`status:` frontmatter and generated Topic, Tickets, Decisions and Threads indexes on top. A `.vault-config.json` in the workspace folder marks it as a workspace.
 
-The **flat** layout — `Progress Log.md`, `Decisions.md` and `Open Threads.md` each stacking many entries — is the retired original. Existing flat workspaces stay **readable**, so status and "what's next" questions work against one unchanged, but nothing new is created in it and nothing is written to it.
+The folder skeleton is **fixed** — every workspace uses the same folder names and document types, so the skills can rely on them. What varies per project is the vocabulary in `.vault-config.json`: the `topics` map and the index tuning (`min_hits`, `title_weight`, `root_notes`).
 
-When a write is about to land in a flat workspace, the skill **offers to migrate it first**. Accept and it converts with `migrate-workspace` and then writes; decline and it tells you what it would have logged instead of appending to the stacked files. It never migrates without asking.
-
-The folder skeleton is **fixed** — every structured workspace uses the same folder names and document types, so the skills can rely on them. What varies per project is the vocabulary in `.vault-config.json`: the `topics` map and the index tuning (`min_hits`, `title_weight`, `root_notes`).
+> [!warning]
+> **1.0 dropped the old flat layout.** Workspaces created before 1.0 — stacked `Progress Log.md`, `Decisions.md` and `Open Threads.md` — are no longer read or written. If you have one, pin the plugin to `v0.4.x`, run its `migrate-workspace` skill to convert it, then upgrade again. This version will tell you rather than guessing, and will never scaffold a second workspace alongside one it cannot read.
 
 ### Vault version control
 

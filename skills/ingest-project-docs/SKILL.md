@@ -56,10 +56,9 @@ Open issues, open milestones, and open PRs/MRs. Keep title, number, URL, labels,
 
 **Step 5 — Map into the workspace** (append/merge, never overwrite).
 
-Ingestion always writes, so it always targets a **structured** workspace. A newly scaffolded one is
-structured by default. If the workspace already exists and is **flat** (no `.vault-config.json`),
-offer to migrate it with `migrate-workspace` first and ingest afterwards — do not write the stacked
-flat files. If the user declines, report what you found in the transcript and write nothing.
+Ingestion always writes, so it always targets a structured workspace — which a newly scaffolded one
+is. If the workspace exists but has no `.vault-config.json`, it predates 1.0 and is unsupported:
+say so, and write nothing.
 
 See
 [manage-project-workspaces/reference/structure.md](../manage-project-workspaces/reference/structure.md)

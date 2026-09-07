@@ -99,30 +99,27 @@ because it is the one that has been reorganised. Read the index first, every tim
 
    Write to a trial workspace only when the user names it explicitly.
 
-## Step 1b — Detect the layout (do this before any write)
+## Step 1b — Confirm the workspace is structured
 
-```bash
-if [ -f "$WORKSPACE/.vault-config.json" ]; then echo structured; else echo flat; fi
-```
+A workspace is structured if it contains `.vault-config.json`. Every workspace this version creates
+or writes to is structured; the flat layout was retired in 1.0.
 
-- **Structured** — one note per fact, filed by document type, with `type:`/`status:` frontmatter and
-  generated indexes. **This is the only layout that is written to**, and the only one new workspaces
-  are created in.
-- **Flat** — the retired original: `Progress Log.md`, `Decisions.md`, `Open Threads.md` each stack
-  many entries. Still **readable**, so status and "what's next" questions work against one. A write
-  to a flat workspace triggers the migration offer in "Flat workspaces" under Step 2 — never an
-  append to the stacked files.
+If a workspace has **no** `.vault-config.json`, it predates 1.0 and this version cannot read or
+write it. Say so plainly and stop:
+
+> `Projects/<name>/` uses the flat layout, which this version no longer supports. Pin the plugin to
+> `v0.4.x` and run `migrate-workspace` to convert it, then upgrade again.
+
+Do not attempt to read it, do not offer to convert it, and above all do not scaffold a second
+workspace alongside it.
 
 The full contract — folders, frontmatter fields, legal `status` values, how to supersede a decision —
 is in [reference/structure.md](reference/structure.md). **Read it before writing.**
 
-Reading differs between layouts and is marked **(flat)** or **(structured)** below. Writing does not:
-there is one write path, and it targets a structured workspace.
-
 ## Step 2 — Scaffold a workspace (first use for a repo only)
 
-**New workspaces are always structured.** The flat layout is retired: it is still *read* (see
-"Flat workspaces" below), but nothing new is created in it and nothing is written to it.
+**Workspaces are structured.** The flat layout was retired in 1.0 and is no longer created, read
+or written.
 
 To scaffold:
 
@@ -161,31 +158,12 @@ it is noise, later and the index has a gap. Each topic needs specific patterns; 
 English word tags half the workspace and makes the index useless. After editing `.vault-config.json`,
 the next session-end hook run re-derives topics across every note.
 
-### Flat workspaces
-
-The flat layout (stacked `Progress Log.md`, `Decisions.md`, `Open Threads.md`) is retired. Existing
-ones are still **readable** — status and "what's next" questions work against them unchanged — but
-they are never created and never written to.
-
-**When a write is about to land in a flat workspace, offer to migrate it first:**
-
-> This workspace still uses the old flat layout. Migrate it to the structured layout now? It is a
-> one-time conversion and I will log the progress afterwards either way.
-
-- **Yes** → run `migrate-workspace`, then write into the migrated workspace as normal.
-- **No** → do not write. Say what you would have logged, in the transcript, so nothing is lost, and
-  offer again next time. Do not append to the flat files.
-
-Never migrate without asking. The conversion rewrites a user's notes, and the plugin does not do
-that unprompted — the same rule that governs `condense-vault`'s deletions and first-run scaffolding.
-
 ## Step 3 — Read before you write
 
 Before acting on a task or answering "what's the status", read the workspace's current state. This is
 the context that would otherwise be lost.
 
-- **(flat)** — `Overview.md`, `Open Threads.md`, and the most recent entries of `Progress Log.md`.
-- **(structured)** — `Overview.md`, `Threads Index.md` (which names the open threads and their
+- `Overview.md`, `Threads Index.md` (which names the open threads and their
   counts), and the newest lines of `Progress Log.md`, following the top one or two dates into
   `Log/<date>.md` for the detail.
 
@@ -204,8 +182,7 @@ tracker (`glab`/`gh`) or planning doc:
    it with `ingest-project-docs` — do not silently fall back to the tracker.
 2. Read the queued work, then `Overview.md` "current focus", then the latest log entry (its
    **Next:** line is usually the direct answer).
-   - **(flat)** — `Open Threads.md`, then the top `## YYYY-MM-DD` section of `Progress Log.md`.
-   - **(structured)** — `Threads Index.md` and the threads it flags for pick-up, then the newest
+   - `Threads Index.md` and the threads it flags for pick-up, then the newest
      `Log/<date>.md`. `Topic Index.md` answers "what do we have on X" directly.
 3. Answer from that. Prioritize: the current-focus area first, then open threads, then a stated **Next**.
 4. Only consult the tracker as a *supplement* — to enrich an item or if the vault is genuinely silent —
@@ -232,12 +209,6 @@ request, or the user closing out the session. It is not something to do as work 
 Golden rule: **never overwrite existing content.** Read the file, then append or edit in place.
 Create a file (with its header) only if it is absent.
 
-### Flat workspace? Offer to migrate, then write
-
-Writes never land in a flat workspace. Offer the migration described in "Flat workspaces" above; on
-a yes, migrate and then write as below. On a no, report what you would have logged in the transcript
-and write nothing.
-
 ### Write one note per fact
 
 Read [reference/structure.md](reference/structure.md) first. In short:
@@ -254,9 +225,9 @@ Read [reference/structure.md](reference/structure.md) first. In short:
   failure this layout exists to prevent — both notes then read as current.
 - **A thread** — one note per thread in `Threads/`, `type: thread`. Tick `- [x]` inside it as items
   finish; set `status: done` when nothing is left.
-- **Overview** — update "current focus" as in the flat layout.
+- **Overview** — update "current focus" when the direction of the work shifts.
 - **Never create** `Decisions.md`, `Open Threads.md`, or a dated section inside the root
-  `Progress Log.md`. Those are flat-layout files; creating them here produces two contradictory
+  `Progress Log.md`. Those are retired flat-layout files; creating them produces two contradictory
   sources of truth in one workspace.
 
 **Do not hand-write `project:`, `topics:` or `tags:`.** The `vault-maintain` SessionEnd hook derives
@@ -266,6 +237,30 @@ rest and regenerates `Topic Index.md` and `Tickets Index.md` before the vault is
 respected.
 
 **Never hand-edit `Topic Index.md` or `Tickets Index.md`.** They are generated; edits are lost.
+
+### How to write a wikilink
+
+Obsidian resolves a bare `[[name]]` by searching the vault, so the rule follows from whether the
+name is unique.
+
+- **A uniquely-named note → link it bare.** `[[use-token-bucket-over-fixed-window]]`, `[[2026-09-07]]`.
+  This is the normal case in a structured workspace: one note per fact gives kebab-case names that
+  are naturally unique. A bare link is readable and survives the workspace being renamed or moved.
+- **A per-workspace structural file → always prefix it with the workspace.**
+  `[[Takeoffs/Overview]]`, `[[Takeoffs/Progress Log]]`, `[[Takeoffs/Decisions Index]]`. These six
+  names — `Overview`, `Progress Log`, `Topic Index`, `Tickets Index`, `Threads Index`,
+  `Decisions Index` — exist once per workspace **by design**, so a bare link to one is ambiguous
+  across the vault.
+
+The exception that makes the second rule bearable: **inside a workspace, linking to that workspace's
+own structural file may stay bare** — Obsidian resolves same-folder first. Prefix whenever the link
+crosses a workspace boundary, and whenever you are writing from outside `Projects/` at all.
+
+**Never disambiguate by rewriting a bare link to a vault-wide search result.** A `[[Decisions]]`
+looked up across the whole vault binds to whichever workspace matches first, and the result *resolves
+cleanly* — so a link check calls it healthy while it silently points at another project's notes. That
+is corrupted provenance, and it is harder to spot than a broken link. If a bare link is ambiguous,
+resolve it against the file that contains it, not against the vault.
 
 Cross-link between notes and to general `[[notes]]` (from the `capture-notes` skill) so the
 workspace stays navigable in Obsidian's graph.

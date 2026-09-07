@@ -14,6 +14,38 @@ are minor.
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-09-07
+
+The flat workspace layout is gone. That transition is what 1.0 was defined as, and it is complete.
+
+### Removed
+
+- **The flat workspace layout.** Workspaces created before 1.0 — stacked `Progress Log.md`,
+  `Decisions.md` and `Open Threads.md` — are no longer created, read or written. A workspace is
+  now identified solely by its `.vault-config.json`.
+- **The `migrate-workspace` skill.** It existed to serve a one-time transition, and that transition
+  is done. The plugin now ships five skills.
+
+### Changed
+
+- **A pre-1.0 workspace is reported, not guessed at.** On finding a folder with no
+  `.vault-config.json`, the skills say plainly that it is unsupported and tell you to pin to
+  `v0.4.x`, run `migrate-workspace`, and upgrade again. They will not read it, will not convert it,
+  and will never scaffold a second workspace alongside it.
+- **Wikilink conventions are now written down.** A uniquely-named note is linked bare
+  (`[[a-decision-note]]`), which survives a workspace being renamed. The six per-workspace
+  structural files — `Overview`, `Progress Log`, and the four generated indexes — exist once per
+  workspace by design, so links to them carry the workspace prefix (`[[Takeoffs/Overview]]`)
+  whenever they cross a workspace boundary. A bare link resolved against the whole vault binds to
+  whichever workspace matches first and *resolves cleanly*, so it reads as healthy while pointing
+  at another project's notes.
+
+### Upgrading from 0.x
+
+If every workspace already has a `.vault-config.json`, nothing to do. Otherwise migrate first, on
+`v0.4.x`, then upgrade — 1.0 cannot convert for you.
+
+
 ## [0.4.0] — 2026-09-07
 
 ### Changed
@@ -114,7 +146,8 @@ They are listed because they describe what the plugin used to do to a vault.
   internal hostnames, real ticket keys, and an internal system name. The repository was then rebuilt
   from a single commit so no pre-scrub object remains reachable.
 
-[Unreleased]: https://github.com/caroline-jeffra/claudesidion/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/caroline-jeffra/claudesidion/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v1.0.0
 [0.4.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.4.0
 [0.3.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.3.0
 [0.2.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.2.0
