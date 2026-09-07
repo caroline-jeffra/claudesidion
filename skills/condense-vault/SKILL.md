@@ -1,13 +1,14 @@
 ---
 name: condense-vault
-description: Weekly cleanup routine for the user's Obsidian vault — condenses stale content (untouched >3 months) down to bullet points and deletes completed/merged work older than that (especially ticket notes). Use when the user says "condense the vault", "clean up the vault", "run the vault cleanup", or when a SessionStart reminder from this plugin says the weekly condense run is due.
+description: Weekly cleanup routine for the user's Obsidian vault — condenses stale content (untouched >3 months) down to bullet points everywhere, and outside project workspaces also deletes records of finished work older than that. Use when the user says "condense the vault", "clean up the vault", "run the vault cleanup", or when a SessionStart reminder from this plugin says the weekly condense run is due.
 ---
 
 # Condensing the vault
 
-Keep the vault lean: old content earns its place only in condensed form, and records of finished
-work eventually go away entirely. This is a routine, not a per-note judgement call — run it over the
-whole vault in one pass.
+Keep the vault lean: old content earns its place only in condensed form, and outside the project
+workspaces records of finished work eventually go away entirely. Project workspaces are condensed
+but never deleted from — they are the durable record. This is a routine, not a per-note judgement
+call — run it over the whole vault in one pass.
 
 **Vault location:** resolve in this order — (1) the `OBSIDIAN_VAULT` environment variable, (2) the config file `~/.claude/obsidian-vault` (one line: the vault's absolute path), (3) the default `~/ObsidianVault`. If none of the three yields an existing directory, ask the user where their vault is and write the answer to `~/.claude/obsidian-vault` so every future session and hook finds it. Use the resolved absolute path (written below as `$OBSIDIAN_VAULT`) for every read/write.
 
@@ -28,8 +29,7 @@ done
 
 Two portability notes baked into that snippet: string `<` comparison inside `[ ]` is bash-only (it breaks under zsh — compare via `sort` instead), and `core.quotepath=off` is required or filenames with non-ASCII characters (em-dashes, arrows) come out quoted and their dates come back empty.
 
-Scan `Notes/`, `Resources/`, `Inbox/`, and `Projects/`. Never touch `.obsidian/`, attachments, or
-non-markdown files.
+Scan `Notes/`, `Resources/`, `Inbox/`, `Archived/`, `Projects/`, and loose root notes. Never touch `.obsidian/`, attachments, or non-markdown files.
 
 **Never condense or delete anything under `Contributions/`.** Those are living career summaries
 maintained by `summarize-contribution` — one per project, updated in place over a project's whole
@@ -39,17 +39,19 @@ destroy the prose it exists to hold.
 
 ## Step 2 — Sort each stale file into one of three buckets
 
-1. **Delete** — records of work that is finished: ticket notes whose ticket is done/closed, notes
-   about a PR/MR that merged, workspace files for shipped-and-forgotten efforts. Signals: frontmatter
+1. **Delete** — records of work that is finished: notes about a PR/MR that merged, unfiled captures
+   that were never worth filing, retired material in `Archived/`. Signals: frontmatter
    `status: done|closed|merged|complete|shipped`, a title or body naming a ticket/PR explicitly
-   marked merged or complete, every checkbox checked with no forward-looking content. Ticket notes
-   are the prime target. When the note names a ticket/PR but its state is not recorded in the note,
+   marked merged or complete, every checkbox checked with no forward-looking content.
+   When the note names a ticket/PR but its state is not recorded in the note,
    you may check the tracker (`gh`/`glab`/Jira link) read-only; if the state still can't be
    established, condense instead of deleting.
 
-   **This bucket applies to flat vaults only.** In a structured workspace (one containing
-   `.vault-config.json`) `shipped` is the *normal terminal status* of a ticket note, not a signal
-   that it is disposable — see below.
+   **This bucket applies outside project workspaces only** — `Resources/`, `Inbox/`, `Archived/`,
+   and loose root notes. Inside `Projects/<repo>/`, nothing is deleted: a workspace note is the
+   durable record of why work happened, and `shipped` is the *normal terminal status* of a ticket
+   note rather than a signal that it is disposable. Condense stale workspace notes; never remove
+   them. See "Project workspaces are never deleted from" below.
 2. **Condense** — everything else that is stale: reduce verbose prose to terse bullet points.
 3. **Leave alone** — stale files that are already terse (roughly: mostly bullets already, or under
    ~15 lines of body), and anything that is a living index (`_index.md`, `MEMORY`-style indexes,
@@ -58,11 +60,16 @@ destroy the prose it exists to hold.
 If genuinely unsure between delete and condense, condense — the next run can delete it once the
 signal is clearer.
 
-### Structured workspaces need extra care
+### Project workspaces are never deleted from
 
-A workspace containing `.vault-config.json` uses the structured layout (see
+Anything under `Projects/<repo>/` is condensed, never deleted. The delete bucket is for material
+that records *that something happened*; a workspace note records *why it happened and what it
+touched*, which stays useful long after the work ships and often after the tracker is gone.
+
+This is a rule about **location**, not about layout — it holds whether or not the workspace has a
+`.vault-config.json` (see
 [manage-project-workspaces/reference/structure.md](../manage-project-workspaces/reference/structure.md)).
-In those workspaces:
+The specifics that matter most:
 
 - **Never delete a note with `type: ticket`, whatever its status.** In the structured layout
   `shipped` is what a ticket note *becomes* when the work lands — it is the terminal state of a
@@ -85,6 +92,21 @@ In those workspaces:
   the only record of that day.
 
 `status: reference` means "durable material, no lifecycle" — it is never a delete signal.
+
+### Where the delete bucket does apply
+
+Outside `Projects/`, in rough order of how much accumulates there:
+
+- **`Archived/`** — retired workspaces and superseded material, expendable by design. The session
+  hooks deliberately neither commit nor report changes here, so it is the one area that grows
+  without any upkeep. It *is* tracked in git, so deletions stay recoverable.
+- **`Inbox/`** — unfiled captures. Anything still here after three months was never worth filing.
+- **`Resources/`** — reference material. Delete only what is genuinely spent: a link that 404s, a
+  workaround for a bug since fixed, a note for a tool no longer used. Most of this condenses.
+- **Loose root notes** other than the ones the plugin maintains.
+
+**Never delete** `Home.md`, `Tasks Archive.md`, `Work Planning.md`, anything under
+`Contributions/`, or `.obsidian/`.
 
 ## Step 3 — Condense
 

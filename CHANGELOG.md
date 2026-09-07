@@ -14,6 +14,21 @@ are minor.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-09-07
+
+### Changed
+
+- **`condense-vault`'s delete bucket is now scoped by location, not by vault layout.** It applies
+  outside project workspaces — `Archived/`, `Inbox/`, `Resources/` and loose root notes. Anything
+  under `Projects/<repo>/` is condensed but never deleted: a workspace note records *why* work
+  happened and what it touched, which outlives the work itself.
+
+  Previously the bucket was scoped "flat vaults only", which made it dead code in a structured
+  workspace and would have made it unreachable entirely once the flat layout is retired. Ticket
+  notes are no longer described as the prime delete target — in a workspace they are never deleted
+  at all.
+
+
 ## [0.1.0] — 2026-09-07
 
 First tagged release. The plugin has been in single-user daily use for some months; this is the
@@ -60,5 +75,6 @@ They are listed because they describe what the plugin used to do to a vault.
   internal hostnames, real ticket keys, and an internal system name. The repository was then rebuilt
   from a single commit so no pre-scrub object remains reachable.
 
-[Unreleased]: https://github.com/caroline-jeffra/claudesidion/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/caroline-jeffra/claudesidion/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.2.0
 [0.1.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.1.0

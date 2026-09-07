@@ -1,6 +1,6 @@
 {
   "name": "claudesidion",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Obsidian-vault integration skills for Claude Code: capture notes, manage per-repo workspaces, ingest project docs, and summarize contributions.",
   "author": {
     "name": "caroline-jeffra"
