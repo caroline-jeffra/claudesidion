@@ -57,7 +57,7 @@ Once either file exists, this step is done and never asks again.
 
 ## Step 1 — Locate the workspace
 
-The vault holds an index that maps each repo's **absolute path** to its workspace folder:
+The vault holds an index that maps each repo to its workspace folder, by a path **relative to this machine's code root**:
 `$OBSIDIAN_VAULT/Projects/_index.md`
 
 **`_index.md` is the only way to choose a workspace.** Never pick one by browsing `Projects/` or by
@@ -66,15 +66,25 @@ because it is the one that has been reorganised. Read the index first, every tim
 
 1. Determine the current repo's absolute path: `git rev-parse --show-toplevel` (fall back to the cwd
    if not a git repo). Call its basename `<repo>`.
-2. Read `_index.md` and look for a row matching that absolute path.
-   - **Match found** → use the workspace folder it names.
-   - **No exact match** → before scaffolding, check whether `<repo>` matches an indexed row by
-     **basename**. The vault syncs across machines and repos get moved, so a path miss usually
-     means a *relocated* repo, not a new one — and scaffolding on a miss creates a second
-     workspace for a repo that already has one. See "Matching is two-stage" in
-     [reference/templates.md](reference/templates.md): on a single basename match, confirm and
-     update that row's path rather than creating a new workspace.
-   - **No match on path or basename** → scaffold a new workspace (Step 2) and add a row.
+
+   **Resolve the code root**, which is what index rows are relative to: the `CODE_ROOT` environment
+   variable, then `~/.claude/code-root` (one line, whitespace trimmed, leading `~/` or `$HOME/`
+   expanded), then the default `~/code`.
+
+2. Read `_index.md` and match. Rows hold paths **relative to the code root**; a row starting with
+   `/` is absolute and matched literally. See "Paths are machine-relative" in
+   [reference/templates.md](reference/templates.md).
+   - **Path match** → use the workspace it names.
+   - **No path match** → fall back to **basename**. On a single match, check whether that row's
+     recorded path exists on this machine. If it does **not**, the repo moved: confirm and update
+     the row. If it **does**, you are simply on a different machine — use the workspace and
+     **change nothing**. Rewriting there is what makes rows ping-pong between machines.
+   - **Several basename matches** → ask which. Do not guess.
+   - **No match at all, and the index has rows** → **stop.** Every relative row missing at once
+     means the code root is wrong or unset, not that this is a new repo. Say which root you
+     resolved and where it came from, and do not scaffold — a second workspace for an existing repo
+     is the split-brain this index exists to prevent.
+   - **No match, and the index is empty** → genuinely new. Scaffold (Step 2) and add a row.
    - **`_index.md` missing** → create it with the header from
      [reference/templates.md](reference/templates.md), then scaffold — subject to the Step 0
      consent gate if this is the first write to a vault that already has content.
@@ -144,7 +154,7 @@ The folder skeleton is **fixed by the contract**, not configured here — every 
 folder names and the same document types, and skills may rely on that. What stays per-project is the
 **vocabulary**: `topics`, `min_hits`, `title_weight`, and optionally `root_notes`.
 
-5. Add the row to `_index.md` mapping the repo's absolute path → `Projects/<repo>/`.
+5. Add the row to `_index.md`. Record the repo's path **relative to the code root** (just `<repo>` for a repo sitting directly in it); use an absolute path only for a repo outside the root.
 
 **Growing the topic vocabulary.** Add a topic once three or four notes would carry it — earlier and
 it is noise, later and the index has a gap. Each topic needs specific patterns; one matching a common

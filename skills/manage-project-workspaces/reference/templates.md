@@ -14,7 +14,7 @@ workspaces stay readable until they are migrated; do not create a new workspace 
 
 ## Index note (`Projects/_index.md`)
 
-Maps each repo's absolute path to its workspace folder. Header + one row per repo:
+Maps each repo to its workspace folder. Header + one row per repo:
 
 ```markdown
 ---
@@ -26,26 +26,52 @@ tags: [index]
 
 | Repo path | Workspace |
 |-----------|-----------|
-| /absolute/path/to/some-repo | [[some-repo/Overview\|some-repo]] |
+| some-repo | [[Some-Repo/Home\|Some-Repo]] |
+| /opt/src/odd-one | [[Odd-One/Home\|Odd-One]] |
 ```
 
-When adding a repo, append a row recording the absolute path from `git rev-parse --show-toplevel`.
+### Paths are machine-relative
 
-**Matching is two-stage, because absolute paths do not survive.** The vault syncs between machines
-and repos get moved; `/Users/ada/code/app` on one machine is `/home/ada/src/app` on another. Treating
-a path miss as "no workspace" scaffolds a *second* workspace for a repo that already has one — the
-split-brain this index exists to prevent.
+The vault syncs between machines, and an absolute path is only ever correct on one of them. So a
+row's path is recorded **relative to that machine's code root**.
 
-1. **Exact absolute path match** → use it.
-2. **No match** → compare the repo's **basename** against the basename of each indexed path, and
-   against the workspace names.
-   - **Exactly one basename match** → almost certainly the same repo, moved. Say so and confirm in
-     one line: "`app` is indexed at `/home/ada/src/app`, which no longer exists — same repo, moved?"
-     On confirmation, **update the existing row's path** and carry on. Never create a second row.
+**Resolving the code root**, in order: the `CODE_ROOT` environment variable, then
+`~/.claude/code-root` (one line, the root's path — whitespace trimmed, a leading `~/` or `$HOME/`
+expanded), then the default `~/code`. This is deliberately the same three-tier shape as the vault
+path, for the same reason: profile exports do not reach hook shells.
+
+- **A relative row** (`some-repo`, `nested/some-repo`) resolves against the root. This is the normal
+  form and what you write when adding a repo.
+- **An absolute row** (`/opt/src/odd-one`) is matched literally, and is the escape hatch for a repo
+  that does not live under the root. Never rewrite one into a relative path.
+
+When adding a repo, take `git rev-parse --show-toplevel`; if it sits under the resolved root, record
+the path **relative to the root**, otherwise record it absolute.
+
+### Matching is two-stage
+
+1. **Path match** — resolve each row (relative rows against the root, absolute rows as-is) and
+   compare against the repo's absolute path.
+2. **No match** → compare the repo's **basename** against each row's basename and the workspace
+   names.
+   - **Exactly one basename match** → check whether that row's recorded path resolves to something
+     that **exists on this machine**.
+     - **It does not exist** → the repo moved. Confirm in one line — "`app` is indexed at
+       `code/app`, which is not here — same repo, moved?" — and on confirmation update the row.
+     - **It does exist** → do **not** rewrite the row. You are on a different machine from the one
+       that wrote it, or looking at a second checkout; rewriting is how the row ends up
+       ping-ponging between machines on every sync. Use the workspace and change nothing.
    - **Several basename matches** → ask which, listing them. Do not guess.
    - **No basename match** → genuinely new. Scaffold and append a row.
 
-The one thing never to do is scaffold silently after a path miss when a basename match exists.
+### Never scaffold on a total miss
+
+If **no row resolves at all** and the index is not empty, the code root is wrong or unset — every
+relative row misses at once. That is a configuration problem, not a new repo.
+
+Say so, name the root you resolved and where it came from, and **stop**. Do not scaffold: creating a
+workspace here is exactly the split-brain this index exists to prevent, and it is unrecoverable
+without a manual merge.
 
 ## Overview.md
 

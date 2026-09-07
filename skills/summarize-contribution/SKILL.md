@@ -153,7 +153,7 @@ Contribution summary progress:
 ### Step 1 — Locate the project and its existing summary
 
 1. Get the repo root (`git rev-parse --show-toplevel`, falling back to cwd) and read
-   `$OBSIDIAN_VAULT/Projects/_index.md` to find the workspace folder for that absolute path. That
+   `$OBSIDIAN_VAULT/Projects/_index.md` to find the workspace folder. Rows hold paths relative to the machine's code root (`CODE_ROOT`, else `~/.claude/code-root`, else `~/code`); a row starting with `/` is absolute. That
    folder's name is `<project>`.
 
    **If there is no row**, the project has no workspace. `<project>` is then undefined, and guessing

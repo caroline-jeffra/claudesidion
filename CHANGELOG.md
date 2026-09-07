@@ -14,6 +14,24 @@ are minor.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-07
+
+### Changed
+
+- **Repo paths in `Projects/_index.md` are now machine-relative.** A row records the repo's path
+  relative to that machine's code root, so one row is correct on every machine the vault syncs to.
+  The root resolves as `CODE_ROOT`, then `~/.claude/code-root`, then the default `~/code` — the same
+  three-tier shape as the vault path, for the same reason. A row starting with `/` is still matched
+  literally, so a repo outside the root keeps working.
+- **The basename fallback no longer rewrites a row whose recorded path exists on this machine.**
+  Previously any path miss rewrote the row, so a repo checked out on two machines had its row
+  overwritten by whichever machine ran last — producing a vault diff every session. Rewriting is now
+  reserved for a repo that genuinely moved.
+- **A total lookup miss no longer scaffolds.** If no row resolves and the index is non-empty, the
+  code root is wrong or unset rather than the repo being new. The skill reports which root it
+  resolved and stops, instead of creating a second workspace for a repo that already has one.
+
+
 ## [0.3.0] — 2026-09-07
 
 ### Changed
@@ -96,7 +114,8 @@ They are listed because they describe what the plugin used to do to a vault.
   internal hostnames, real ticket keys, and an internal system name. The repository was then rebuilt
   from a single commit so no pre-scrub object remains reachable.
 
-[Unreleased]: https://github.com/caroline-jeffra/claudesidion/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/caroline-jeffra/claudesidion/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.4.0
 [0.3.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.3.0
 [0.2.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.2.0
 [0.1.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.1.0

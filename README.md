@@ -45,6 +45,18 @@ folder Obsidian opens works fine). If none of the three locations yields an exis
 skills ask where your vault is and write the answer to the config file for you; the hooks stay
 silent until it's set.
 
+### 1b. Point at your code (optional)
+
+The workspace index records where each repo lives **relative to a code root**, so one entry is correct on every machine you sync the vault to. The root resolves like the vault path: the `CODE_ROOT` environment variable, then `~/.claude/code-root` (one line), then the default `~/code`.
+
+```bash
+echo "$HOME/code" > ~/.claude/code-root
+```
+
+Skip this if your repos are already in `~/code`. A repo living outside the root is recorded with its absolute path instead, so the root never becomes a hard constraint.
+
+Why it exists: an absolute path like `/Users/ada/code/app` is only correct on one machine, and a vault that syncs between two of them ends up with rows that flip back and forth. Storing the machine-specific part once, in config, keeps the vault machine-independent — and keeps your directory layout out of your notes.
+
 ### 2. Install the plugin
 
 **As a plugin marketplace** (recommended):
