@@ -1,0 +1,37 @@
+# Suggested .gitignore for an Obsidian vault managed by claudesidion.
+# Copy to the root of your vault. The push hook also refuses secret-shaped filenames, but a
+# blocklist can never be complete — this is the durable half of that guard.
+
+# Obsidian's own per-machine state (workspace layout, cache). Keep your settings if you
+# sync them deliberately; drop the whole folder if you do not.
+/.obsidian/workspace*
+/.obsidian/cache
+/.obsidian/plugins/*/data.json
+
+# Secrets and credentials — never in a synced knowledge base.
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.crt
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+.npmrc
+.netrc
+.pgpass
+credentials
+
+# OS and editor noise.
+.DS_Store
+Thumbs.db
+*~
+*.swp
+
+# Scratch space. Anything here is yours to manage; the plugin will not commit it.
+/Scratch/
+/tmp/

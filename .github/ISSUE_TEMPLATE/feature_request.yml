@@ -1,0 +1,32 @@
+name: Idea or feature request
+description: Suggest something the plugin should do differently
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        No promises on any of these — see the support note in the README — but ideas are welcome,
+        particularly from anyone whose vault is organised differently from the author's.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve
+      description: What you were trying to do when you wanted it, rather than the solution itself.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+    validations:
+      required: false
+
+  - type: textarea
+    id: workflow
+    attributes:
+      label: How your vault is set up
+      description: Structure, naming, whether it is versioned — the plugin was built around one person's vault, so this is the most useful context for judging whether an idea generalises.
+    validations:
+      required: false

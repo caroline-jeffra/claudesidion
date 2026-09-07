@@ -1,0 +1,14 @@
+{
+  "name": "claudesidion",
+  "description": "Obsidian-vault integration for Claude Code: skills and hooks that keep notes, per-repo workspaces and project context in a vault.",
+  "owner": {
+    "name": "caroline-jeffra"
+  },
+  "plugins": [
+    {
+      "name": "claudesidion",
+      "source": "./",
+      "description": "Obsidian-vault integration skills for Claude Code: capture notes, manage per-repo workspaces, ingest project docs, and summarize contributions."
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+name: Bug report
+description: Something the plugin did that it should not have, or did not do that it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. If this is a **security** issue — data loss, a secret being committed,
+        anything written outside your vault — please close this and use the Security tab's
+        **Report a vulnerability** instead, so it stays private until there is a fix.
+
+        Please redact anything private: note contents, project names, and paths inside your vault.
+        A structural description is almost always enough to diagnose the problem.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What the plugin did, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: What you asked Claude, and what happened next.
+      placeholder: |
+        1. In a repo with a workspace, I said "..."
+        2. At session end, the hook ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Which part
+      description: Best guess is fine.
+      options:
+        - capture-notes
+        - manage-project-workspaces
+        - ingest-project-docs
+        - summarize-contribution
+        - condense-vault
+        - migrate-workspace
+        - A hook (vault sync, size check, condense reminder, index maintenance)
+        - Setup / installation
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install it
+      description: The symlink path installs no hooks, which explains a lot of hook-related reports.
+      options:
+        - Plugin marketplace (/plugin install)
+        - Cloned and symlinked the skills
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version and commit
+      description: "The `version` from `.claude-plugin/plugin.json`, plus the commit SHA if you have it (`git -C <clone> rev-parse --short HEAD`). The marketplace installs from the branch, so the SHA is the more precise answer of the two."
+      placeholder: 0.1.0 (a1b2c3d)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: layout
+    attributes:
+      label: Workspace layout
+      description: Structured workspaces have a `.vault-config.json`; flat ones do not.
+      options:
+        - Flat
+        - Structured
+        - Not sure / not applicable
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: "OS and versions. Run: `uname -s`, `git --version`, `jq --version`, `python3 --version`"
+      render: shell
+      placeholder: |
+        macOS 15.2
+        git 2.47.0
+        jq 1.7.1
+        Python 3.13.1
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: vault-git
+    attributes:
+      label: Vault version control
+      options:
+        - label: My vault is a git repository
+        - label: My vault has a remote it pushes to
+
+  - type: textarea
+    id: hook-output
+    attributes:
+      label: Hook output
+      description: Any message the hooks printed. They report refusals on stdout rather than failing silently, so this is often the whole answer.
+      render: shell
+    validations:
+      required: false

@@ -1,0 +1,121 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Both platforms always report. The hooks branch on BSD vs GNU tooling (notably the
+      # `date -v` / `date -d` fallback), so a failure on one is a real finding about the other,
+      # not a reason to cancel it.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq jq shellcheck
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install jq shellcheck
+
+      - name: Record the toolchain
+        # The suite's behaviour depends on which date/git/bash it got, so print them: a failure
+        # that only reproduces on one runner is usually explained by this block.
+        run: |
+          uname -srm
+          bash --version | head -1
+          git --version
+          jq --version
+          python3 --version
+          shellcheck --version | sed -n '2p'
+          printf 'date -v (BSD): '; date -v-7d +%F 2>/dev/null || echo 'unsupported'
+          printf 'date -d (GNU): '; date -d '-7 days' +%F 2>/dev/null || echo 'unsupported'
+
+      - name: Git identity for fixtures
+        # Fixtures set their own per-repo identity, but git needs a global one to exist before
+        # some operations will run at all on a bare runner.
+        run: |
+          git config --global user.email ci@example.invalid
+          git config --global user.name CI
+
+      - name: Run the suite
+        # run.sh syntax-checks every suite, runs shellcheck, then runs each suite.
+        run: bash tests/run.sh
+
+  lint:
+    name: shellcheck (strict)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+
+      # run.sh already gates on -S warning; this is the stricter style pass. It is advisory
+      # because style findings should not block a bug fix, but it stays visible so the
+      # suggestions do not accumulate unseen.
+      - name: shellcheck at style level (advisory)
+        continue-on-error: true
+        run: shellcheck -S style hooks/*.sh tests/*.sh
+
+      - name: Check hooks are executable
+        run: |
+          rc=0
+          for f in hooks/*.sh tests/*.sh; do
+            if [ ! -x "$f" ]; then
+              printf 'not executable: %s\n' "$f"
+              rc=1
+            fi
+          done
+          exit "$rc"
+
+      - name: Validate JSON manifests
+        run: |
+          for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json; do
+            jq empty "$f" && printf 'ok: %s\n' "$f"
+          done
+
+      - name: Validate the plugin manifest
+        # `claude plugin validate --strict` is the tool Anthropic ships for exactly this, and it
+        # catches unrecognised fields and missing metadata that the runtime silently tolerates.
+        # Advisory: the CLI is not guaranteed installable on a runner, and a plugin release should
+        # not be blocked by that being unavailable.
+        continue-on-error: true
+        run: |
+          if command -v claude >/dev/null 2>&1; then
+            claude plugin validate . --strict
+          else
+            npm install -g @anthropic-ai/claude-code >/dev/null 2>&1 \
+              && claude plugin validate . --strict \
+              || echo 'claude CLI unavailable on this runner; skipping manifest validation'
+          fi
+
+      - name: Version is semver and matches the changelog
+        # These drift apart silently otherwise: the version is bumped and the changelog forgotten,
+        # or vice versa, and the first person to notice is someone reading a release note.
+        run: |
+          v="$(jq -r '.version // empty' .claude-plugin/plugin.json)"
+          [ -n "$v" ] || { echo 'plugin.json has no version'; exit 1; }
+          printf '%s' "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$' \
+            || { printf 'not semver: %s\n' "$v"; exit 1; }
+          grep -q "^## \[$v\]" CHANGELOG.md \
+            || { printf 'CHANGELOG.md has no section for [%s]\n' "$v"; exit 1; }
+          printf 'ok: version %s documented in CHANGELOG.md\n' "$v"
