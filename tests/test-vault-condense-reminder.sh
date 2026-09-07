@@ -22,9 +22,17 @@ days_ago() { # n
   date -v-"$1"d +%Y-%m-%d 2>/dev/null || date -d "-$1 days" +%Y-%m-%d 2>/dev/null
 }
 
-stamp_vault() { # name, stamp-contents
+# A fixture vault carrying a genuinely stale file. The routine weekly prompt is gated on
+# something actually being old enough to condense, so a fixture without one tests the gate
+# rather than the stamp logic it means to test. Pass --fresh for the gate's own tests.
+stamp_vault() { # name, stamp-contents [--fresh]
   local v; v="$(build_vault "$1" --no-git)"
   printf '%s\n' "$2" > "$v/$STAMP_NAME"
+  if [ "${3-}" != "--fresh" ]; then
+    : > "$v/Projects/ancient.md"
+    touch -t 202501010000 "$v/Projects/ancient.md" 2>/dev/null \
+      || touch -d '2025-01-01' "$v/Projects/ancient.md" 2>/dev/null
+  fi
   printf '%s' "$v"
 }
 
@@ -109,6 +117,31 @@ if command -v jq >/dev/null 2>&1; then
 else
   ok 'JSON shape tests skipped (jq not installed)'
   ok 'JSON shape tests skipped (jq not installed)'
+fi
+
+section 'Staleness gate: an overdue stamp alone is not enough'
+
+# The stamp says "7 days since a run", but the reminder should only speak if there is
+# actually something old enough to condense. A vault younger than the 3-month threshold
+# prompted weekly for a run that could only ever find nothing.
+
+v="$(stamp_vault gate_fresh "$(days_ago 90)" --fresh)"
+run_hook vault-condense-reminder.sh "$v"
+assert_eq 0 "$HOOK_RC" 'overdue stamp, nothing stale: exit 0'
+if prompted; then
+  nope 'overdue stamp but nothing stale: stays silent' "got [$HOOK_OUT]"
+else
+  ok 'overdue stamp but nothing stale: stays silent'
+fi
+
+# ...but it must still fire when something genuinely is stale, or the gate has just
+# disabled the reminder outright.
+v="$(stamp_vault gate_stale "$(days_ago 90)")"
+run_hook vault-condense-reminder.sh "$v"
+if prompted; then
+  ok 'overdue stamp and a stale file: prompts'
+else
+  nope 'overdue stamp and a stale file: prompts' "got [$HOOK_OUT]"
 fi
 
 finish

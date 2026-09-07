@@ -14,6 +14,22 @@ are minor.
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-09-07
+
+### Fixed
+
+- **The weekly condense reminder no longer prompts when nothing is stale.** It fired on the 7-day
+  stamp alone, so a vault younger than the 3-month staleness threshold was nudged every week into a
+  run that could only find nothing. The routine nudge now also confirms at least one file is old
+  enough to condense. The "never been recorded" message is deliberately *not* gated — that is how
+  someone first learns the routine exists.
+- **`stat` platform detection.** The reminder picked BSD vs GNU `stat` with `bsd || gnu`, which does
+  not work: GNU `stat` reads the BSD `%Sm` as a *filename*, writes to stderr, and still **exits 0**,
+  so the fallback never ran and the check silently found nothing on Linux. It now probes `stat` once
+  and tests the output rather than the exit code. Unlike the `date -v`/`date -d` pair, this failure
+  mode succeeds wrongly instead of failing cleanly.
+
+
 ## [1.0.0] — 2026-09-07
 
 The flat workspace layout is gone. That transition is what 1.0 was defined as, and it is complete.
@@ -146,7 +162,8 @@ They are listed because they describe what the plugin used to do to a vault.
   internal hostnames, real ticket keys, and an internal system name. The repository was then rebuilt
   from a single commit so no pre-scrub object remains reachable.
 
-[Unreleased]: https://github.com/caroline-jeffra/claudesidion/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/caroline-jeffra/claudesidion/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v1.0.1
 [1.0.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v1.0.0
 [0.4.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.4.0
 [0.3.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.3.0
