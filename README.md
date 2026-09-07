@@ -8,11 +8,11 @@ home for your work — notes, per-repo workspaces, and imported project context.
 | Skill | What it does |
 |-------|--------------|
 | **capture-notes** | Saves general knowledge (ideas, facts, references) as well-formed notes with frontmatter, tags, and wikilinks, in the right folder (`Notes/`, `Resources/`, `Inbox/`). |
-| **manage-project-workspaces** | Maintains a per-repo workspace (`Projects/<repo>/`) — Overview, dated Progress Log, Decisions/ADRs, and Open Threads, plus standard subfolders created on first use: `Tickets/` (one note per numbered Jira/GitLab/GitHub issue), `Notes/` (unticketed working notes), `Learning/` (study material) — as the source of truth for "what's next" / "where did we leave off", checked before any issue tracker. |
+| **manage-project-workspaces** | Maintains a per-repo workspace (`Projects/<repo>/`) as the source of truth for "what's next" / "where did we leave off", checked before any issue tracker. One note per fact, filed by type into `Log/`, `Decisions/`, `Threads/`, `Tickets/`, `Research/` and `Notes/`, with generated indexes on top. |
 | **ingest-project-docs** | Bootstraps a repo's workspace from context that already exists: open issues/milestones/PRs (GitHub `gh` / GitLab `glab`), in-repo docs (README, `docs/`, `CLAUDE.md`, `.claude/`), and scratch files. |
 | **summarize-contribution** | Writes or updates a career-facing summary of your contribution to a project, one file per project in `Contributions/`. Evidence comes from git history (identity discovery, authored vs. shipped vs. integrated), the project workspace, and any tracker you have CLI access to. Structured around the project's major efforts, with liftable text for CV, LinkedIn, 360 reviews, and blog topics. Updates integrate into the existing text rather than appending. |
 | **condense-vault** | Weekly cleanup: condenses stale content (untouched >3 months) down to bullet points. Outside the project workspaces — in `Archived/`, `Inbox/`, `Resources/` and loose root notes — it also deletes records of finished work. **Project workspaces are condensed but never deleted from**; a workspace note records why work happened, which outlives the work itself. Deletes only when the vault is a git repository, since git history is what makes a deletion recoverable; an unversioned vault gets condensed instead. |
-| **migrate-workspace** | Converts one project workspace from the flat layout (stacked `Progress Log.md`, `Decisions.md`, `Open Threads.md`) to the structured layout (one note per fact, filed by type, with generated indexes). A one-time transition tool — see "Workspace layouts" below. |
+| **migrate-workspace** | Converts one project workspace from the retired flat layout (stacked `Progress Log.md`, `Decisions.md`, `Open Threads.md`) to the structured layout. A one-time transition tool — see "Workspace layouts" below. |
 
 ## Prerequisites
 
@@ -132,20 +132,13 @@ Everything written to the vault follows two rules. First, **no hard line breaks 
 
 ### Workspace layouts
 
-A project workspace exists in one of two layouts, and the skills detect which by looking for a
-`.vault-config.json` in the workspace folder.
+Every **new** workspace is created in the **structured** layout: one note per fact, filed by document type into `Log/`, `Decisions/`, `Threads/`, `Tickets/`, `Research/` and `Notes/`, with `type:`/`status:` frontmatter and generated Topic, Tickets, Decisions and Threads indexes. A `.vault-config.json` in the workspace folder is what marks it structured.
 
-**Flat** is the default and where every new workspace starts: `Progress Log.md`, `Decisions.md` and
-`Open Threads.md` each stack many entries in one file. It is the simpler layout and the right choice
-for a repo with a handful of notes.
+The **flat** layout — `Progress Log.md`, `Decisions.md` and `Open Threads.md` each stacking many entries — is the retired original. Existing flat workspaces stay **readable**, so status and "what's next" questions work against one unchanged, but nothing new is created in it and nothing is written to it.
 
-**Structured** is one note per fact, filed by document type into `Log/`, `Decisions/` and `Threads/`,
-with `type:`/`status:` frontmatter and generated indexes. It earns its complexity once finding things
-becomes the problem — typically when the stacked files pass a few hundred lines, or when decisions
-start superseding one another and you need the supersede chain to be explicit.
+When a write is about to land in a flat workspace, the skill **offers to migrate it first**. Accept and it converts with `migrate-workspace` and then writes; decline and it tells you what it would have logged instead of appending to the stacked files. It never migrates without asking.
 
-`migrate-workspace` converts one workspace from the first to the second. It is a one-time transition
-tool, not part of the routine workflow.
+The folder skeleton is **fixed** — every structured workspace uses the same folder names and document types, so the skills can rely on them. What varies per project is the vocabulary in `.vault-config.json`: the `topics` map and the index tuning (`min_hits`, `title_weight`, `root_notes`).
 
 ### Vault version control
 

@@ -207,6 +207,22 @@ def emit_frontmatter(fields: dict[str, object]) -> str:
 # ---------------------------------------------------------------- config
 
 
+# The folder skeleton is fixed by the workspace contract, not configured per workspace:
+# every structured workspace uses these names, and the skills rely on that. It stays
+# overridable from .vault-config.json only so workspaces written before the contract was
+# fixed keep working; new ones omit the key entirely.
+DEFAULT_FOLDERS: dict[str, str] = {
+    "ticket": "Tickets",
+    "epic": "Epics",
+    "research": "Research",
+    "note": "Notes",
+    "decision": "Decisions",
+    "convention": "Decisions",
+    "thread": "Threads",
+    "log": "Log",
+}
+
+
 @dataclass
 class Config:
     project: str
@@ -223,7 +239,7 @@ class Config:
         raw = json.loads(path.read_text(encoding="utf-8"))
         return cls(
             project=raw["project"],
-            folders=raw.get("folders", {}),
+            folders=raw.get("folders") or dict(DEFAULT_FOLDERS),
             root_notes=set(raw.get("root_notes", [])),
             index_types=set(raw.get("index_types", [])),
             topics=raw.get("topics", {}),

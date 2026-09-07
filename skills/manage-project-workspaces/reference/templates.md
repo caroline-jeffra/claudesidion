@@ -4,9 +4,13 @@
 - Index note (`Projects/_index.md`)
 - Overview.md
 - Progress Log.md
-- Decisions.md
-- Open Threads.md
+- `.vault-config.json`
+- Decisions.md / Open Threads.md — **retired flat templates, kept for reading existing workspaces**
 - Worked examples
+
+New workspaces are scaffolded **structured** (see
+[structure.md](structure.md)). The flat templates below are retained only so existing flat
+workspaces stay readable until they are migrated; do not create a new workspace from them.
 
 ## Index note (`Projects/_index.md`)
 
@@ -47,13 +51,14 @@ The one thing never to do is scaffold silently after a path miss when a basename
 
 ```markdown
 ---
-created: YYYY-MM-DD
-tags: [project]
+type: overview
+status: active
 ---
 
 # <repo>
 
 **Repo path:** `/absolute/path/to/repo`
+
 **Current focus:** <one line — what the work is right now>
 
 ## What this is
@@ -64,34 +69,71 @@ tags: [project]
 - GitHub/GitLab: <url or n/a>
 
 ## Map
-- [[Progress Log]]
-- [[Decisions]]
-- [[Open Threads]]
+- [[Progress Log]] · [[Topic Index]] · [[Decisions Index]] · [[Threads Index]]
+- `Decisions/` · `Threads/` · `Log/` · `Tickets/` · `Research/` · `Notes/`
 ```
 
 ## Progress Log.md
 
+In a structured workspace this is an **index**: one line per working day, newest first. The detail
+lives in `Log/YYYY-MM-DD.md`. Never append a dated section to this file.
+
 ```markdown
 ---
-created: YYYY-MM-DD
-tags: [project, log]
+type: log-index
+status: reference
 ---
 
 # Progress Log — <repo>
 
-<!-- Newest entries at the top. -->
+One line per working day. Detail lives in the dated note.
+
 ```
 
-Each entry:
+Each line, newest first:
 
 ```markdown
-## YYYY-MM-DD
+- **[[YYYY-MM-DD]]** — <one-line summary of the day>
+```
+
+And the day's note itself, `Log/YYYY-MM-DD.md`:
+
+```markdown
+---
+type: log
+date: YYYY-MM-DD
+---
+
+# YYYY-MM-DD
 
 - **Did:** <what changed>
-- **Why:** <reason / context>
+- **Learned:** <what you now know that you did not before>
 - **Next:** <the next step>
-- **Links:** [[Decisions#<anchor>]], PR <url>
+- **Links:** [[a-decision-note]], PR <url>
 ```
+
+## `.vault-config.json`
+
+Written at scaffold time; this file is what marks a workspace structured.
+
+```json
+{
+  "project": "<short-slug>",
+  "generated_types": ["index", "log-index"],
+  "index_types": ["index", "log-index", "overview", "meta", "glossary", "summary"],
+  "min_hits": 3,
+  "title_weight": 4,
+  "topics": {}
+}
+```
+
+The folder skeleton is fixed by the contract and is not configured here. What varies per project is
+the vocabulary: `topics`, `min_hits`, `title_weight`, and optionally `root_notes`.
+
+## Retired flat templates
+
+The two templates below build the stacked files of the **flat** layout. They are retired: new
+workspaces never use them. They remain documented so an existing flat workspace can still be read.
 
 ## Decisions.md
 
@@ -134,24 +176,38 @@ tags: [project, todo]
 
 ## Worked examples
 
-**A progress entry:**
+**A day's log** — `Log/2026-07-10.md`, with its one-line entry added to the root `Progress Log.md`:
 ```markdown
-## 2026-07-10
+---
+type: log
+date: 2026-07-10
+---
+
+# 2026-07-10
 
 - **Did:** Added Redis-backed rate limiter to the API gateway.
-- **Why:** Bursty clients were exhausting the DB connection pool.
+- **Learned:** Bursty clients were exhausting the DB connection pool; the limiter is the fix, not more pool headroom.
 - **Next:** Load-test the 429 path and tune the window.
-- **Links:** [[Decisions#2026-07-10 — Use token-bucket over fixed-window]], PR #142
+- **Links:** [[use-token-bucket-over-fixed-window]], PR #142
 ```
 
-**A decision entry:**
+**A decision** — `Decisions/use-token-bucket-over-fixed-window.md`, one note per decision:
 ```markdown
-## 2026-07-10 — Use token-bucket over fixed-window
+---
+type: decision
+status: active
+decided: 2026-07-10
+---
 
-- **Decision:** Rate limiting uses a token-bucket algorithm.
-- **Rationale:** Smooths bursts without the boundary spikes fixed-window allows.
-- **Alternatives:** Fixed-window (simpler, but double-rate at window edges); leaky-bucket (rejected — no burst allowance the product wants).
-- **From:** [[Progress Log#2026-07-10]]
+# Use token-bucket over fixed-window
+
+**Decision.** Rate limiting uses a token-bucket algorithm.
+
+**Rationale.** Smooths bursts without the boundary spikes fixed-window allows.
+
+**Alternatives considered.** Fixed-window — simpler, but double-rate at window edges. Leaky-bucket — rejected, no burst allowance the product wants.
+
+**From:** [[2026-07-10]]
 ```
 
 ## `Tasks Archive.md` (vault root — create once per vault)

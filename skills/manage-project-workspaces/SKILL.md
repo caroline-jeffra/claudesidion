@@ -91,59 +91,40 @@ because it is the one that has been reorganised. Read the index first, every tim
 
 ## Step 1b — Detect the layout (do this before any write)
 
-This vault holds workspaces in **two** layouts, and writing the wrong one corrupts the workspace.
-
 ```bash
 if [ -f "$WORKSPACE/.vault-config.json" ]; then echo structured; else echo flat; fi
 ```
 
-- **Flat** — the original: `Progress Log.md`, `Decisions.md`, `Open Threads.md` each stack many
-  entries. This is still the default and most workspaces use it.
 - **Structured** — one note per fact, filed by document type, with `type:`/`status:` frontmatter and
-  generated indexes.
+  generated indexes. **This is the only layout that is written to**, and the only one new workspaces
+  are created in.
+- **Flat** — the retired original: `Progress Log.md`, `Decisions.md`, `Open Threads.md` each stack
+  many entries. Still **readable**, so status and "what's next" questions work against one. A write
+  to a flat workspace triggers the migration offer in "Flat workspaces" under Step 2 — never an
+  append to the stacked files.
 
-The full contract for the structured layout — folders, frontmatter fields, legal `status` values,
-how to supersede a decision — is in [reference/structure.md](reference/structure.md). **Read it
-before writing to a structured workspace.**
+The full contract — folders, frontmatter fields, legal `status` values, how to supersede a decision —
+is in [reference/structure.md](reference/structure.md). **Read it before writing.**
 
-Everything below that differs between layouts is marked **(flat)** or **(structured)**.
+Reading differs between layouts and is marked **(flat)** or **(structured)** below. Writing does not:
+there is one write path, and it targets a structured workspace.
 
 ## Step 2 — Scaffold a workspace (first use for a repo only)
 
-Create `$OBSIDIAN_VAULT/Projects/<repo>/` with four files, each from the templates in
-[reference/templates.md](reference/templates.md):
+**New workspaces are always structured.** The flat layout is retired: it is still *read* (see
+"Flat workspaces" below), but nothing new is created in it and nothing is written to it.
 
-- `Overview.md` — what the repo is, current focus, absolute repo path, links to external trackers.
-- `Progress Log.md` — dated entries; starts empty under its header.
-- `Decisions.md` — lightweight ADRs; starts empty under its header.
-- `Open Threads.md` — living TODOs / blockers / open questions as checkboxes.
+To scaffold:
 
-Then add a row to `_index.md` mapping the repo's absolute path → `Projects/<repo>/`.
-
-Beyond the four files, two **standard subfolders** exist. Create each on first use — never scaffold them empty:
-
-- `Tickets/` — one note per numbered issue from any tracker: Jira, GitLab, and GitHub issues all live here (e.g. `ACME-1281 lead-approval status flow.md`, `#61 API fetch wrapper.md`).
-- `Notes/` — working notes that aren't tied to a numbered ticket: plans, playbooks, postmortems, setup guides, findings.
-
-Use exactly these names — no variants like `Jira_Tickets` or `Unticketed Notes`. Anything that doesn't fit a subfolder stays a loose file in the workspace root only if it's one of the four standard files.
-
-### Which layout to scaffold
-
-**Default to flat.** It is the simpler layout and right for most repos: one with three notes does not
-need topic indexes.
-
-**Scaffold structured when the user asks for it**, or when they say the repo is one they are about to
-work heavily. Migrating later is more work than starting right, and every note written in between
-lands in the wrong shape. If they have not said, ask in one line rather than guessing — it is a
-cheap question now and an expensive migration later.
-
-To scaffold structured:
-
-1. Create the folders from
-   [reference/structure.md](reference/structure.md): `Tickets/`, `Research/`, `Notes/`, `Decisions/`,
-   `Threads/`, `Log/`. Create each on first use, never empty.
-2. Create `Overview.md` and a `Progress Log.md` that is a **one-line-per-day index**, not a stack.
-3. Write `.vault-config.json` — this file is what marks the workspace structured; nothing else does.
+1. Create `$OBSIDIAN_VAULT/Projects/<repo>/` and, inside it, the folders from
+   [reference/structure.md](reference/structure.md): `Tickets/`, `Epics/`, `Research/`, `Notes/`,
+   `Decisions/`, `Threads/`, `Log/`. **Create each on first use, never empty** — an empty folder is
+   noise in the sidebar and tells the reader nothing.
+2. Create `Overview.md` from the template in [reference/templates.md](reference/templates.md) — what
+   the repo is, current focus, the absolute repo path, links to external trackers.
+3. Create `Progress Log.md` as a **one-line-per-day index**, not a stack of entries. The detail lives
+   in `Log/<date>.md`.
+4. Write `.vault-config.json` — this file is what marks the workspace structured; nothing else does.
    A new workspace has no content to derive topics from, so start with `"topics": {}` and add them as
    subjects emerge. The indexes work from day one; the Topic Index is simply empty until there are
    topics.
@@ -151,10 +132,6 @@ To scaffold structured:
 ```json
 {
   "project": "<short-slug>",
-  "folders": {
-    "ticket": "Tickets", "epic": "Epics", "research": "Research", "note": "Notes",
-    "decision": "Decisions", "convention": "Decisions", "thread": "Threads", "log": "Log"
-  },
   "generated_types": ["index", "log-index"],
   "index_types": ["index", "log-index", "overview", "meta", "glossary", "summary"],
   "min_hits": 3,
@@ -163,15 +140,34 @@ To scaffold structured:
 }
 ```
 
-4. Add the row to `_index.md` as normal.
+The folder skeleton is **fixed by the contract**, not configured here — every workspace uses the same
+folder names and the same document types, and skills may rely on that. What stays per-project is the
+**vocabulary**: `topics`, `min_hits`, `title_weight`, and optionally `root_notes`.
+
+5. Add the row to `_index.md` mapping the repo's absolute path → `Projects/<repo>/`.
 
 **Growing the topic vocabulary.** Add a topic once three or four notes would carry it — earlier and
 it is noise, later and the index has a gap. Each topic needs specific patterns; one matching a common
 English word tags half the workspace and makes the index useless. After editing `.vault-config.json`,
 the next session-end hook run re-derives topics across every note.
 
-An existing flat workspace moves over with the `migrate-workspace` skill — typically once the stacked
-files pass a few hundred lines, or decisions start superseding each other.
+### Flat workspaces
+
+The flat layout (stacked `Progress Log.md`, `Decisions.md`, `Open Threads.md`) is retired. Existing
+ones are still **readable** — status and "what's next" questions work against them unchanged — but
+they are never created and never written to.
+
+**When a write is about to land in a flat workspace, offer to migrate it first:**
+
+> This workspace still uses the old flat layout. Migrate it to the structured layout now? It is a
+> one-time conversion and I will log the progress afterwards either way.
+
+- **Yes** → run `migrate-workspace`, then write into the migrated workspace as normal.
+- **No** → do not write. Say what you would have logged, in the transcript, so nothing is lost, and
+  offer again next time. Do not append to the flat files.
+
+Never migrate without asking. The conversion rewrites a user's notes, and the plugin does not do
+that unprompted — the same rule that governs `condense-vault`'s deletions and first-run scaffolding.
 
 ## Step 3 — Read before you write
 
@@ -226,32 +222,13 @@ request, or the user closing out the session. It is not something to do as work 
 Golden rule: **never overwrite existing content.** Read the file, then append or edit in place.
 Create a file (with its header) only if it is absent.
 
-### (flat) — append to the stacked files
+### Flat workspace? Offer to migrate, then write
 
-- **Progress Log** — append a new `## YYYY-MM-DD` entry (or add bullets under today's existing heading)
-  covering *what changed*, *why*, and *next*. Link related `[[notes]]`, PRs, and decisions.
-- **Open Threads** — check off `- [x]` items that are done; append new `- [ ]` items for new
-  blockers/questions/next actions.
-- **Decisions** — when a real decision was made, append an entry **at the end of the file**: the
-  decision, date, rationale, and alternatives considered. Cross-link the Progress Log entry that
-  prompted it. (`Decisions.md` grows chronologically; only `Progress Log.md` is newest-first.)
-- **Overview** — update "current focus" when the direction of the work shifts.
+Writes never land in a flat workspace. Offer the migration described in "Flat workspaces" above; on
+a yes, migrate and then write as below. On a no, report what you would have logged in the transcript
+and write nothing.
 
-**When the new decision replaces an older one**, add a `**Replaces:**` line naming it. The flat
-layout has no `superseded_by` frontmatter, so the link is prose — but it must be there, or both
-entries read as current:
-
-- The old decision **has** an entry → `**Replaces:** the 2026-07-14 decision that X.` Then edit that
-  older entry, adding `**Superseded 2026-09-02** — see the entry below.` under its heading. Editing
-  the old entry is the part that is easy to skip and the part that matters.
-- The old decision has **no** entry → `**Replaces:** the previous practice that X, which was never
-  recorded as a decision.` Do not invent an entry to supersede, and tell the user in one line.
-
-**When a ticket earns its own note in `Tickets/`** — same rule as the structured layout: when there
-is something to say that outlives a checkbox (findings, a plan, deferred gaps, review comments). A
-ticket that is just a unit of work stays a `- [ ]` item in `Open Threads.md`.
-
-### (structured) — write one note per fact
+### Write one note per fact
 
 Read [reference/structure.md](reference/structure.md) first. In short:
 

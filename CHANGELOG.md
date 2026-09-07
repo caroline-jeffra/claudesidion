@@ -14,6 +14,27 @@ are minor.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-09-07
+
+### Changed
+
+- **New workspaces are scaffolded structured.** The flat layout is retired: it is still *read*, so
+  status and "what's next" questions work against an existing flat workspace unchanged, but nothing
+  new is created in it and nothing is written to it.
+- **A write to a flat workspace offers to migrate first.** Accept and it converts with
+  `migrate-workspace` then writes; decline and it reports what it would have logged rather than
+  appending to the stacked files. It never migrates without asking.
+- **The folder skeleton is fixed by the contract**, not configured per workspace. New
+  `.vault-config.json` files omit the `folders` key; the maintenance hook now carries the skeleton as
+  a built-in default. An explicit `folders` map still overrides it, so workspaces written before this
+  keep working. What stays per-project is the vocabulary: `topics`, `min_hits`, `title_weight`,
+  `root_notes`.
+- Templates, worked examples and the structure contract now show the structured shapes. The flat
+  templates are retained and marked retired, for reading existing workspaces.
+
+This is a step toward `1.0`, which lands when the transition is complete and the flat layout is gone.
+
+
 ## [0.2.0] — 2026-09-07
 
 ### Changed
@@ -75,6 +96,7 @@ They are listed because they describe what the plugin used to do to a vault.
   internal hostnames, real ticket keys, and an internal system name. The repository was then rebuilt
   from a single commit so no pre-scrub object remains reachable.
 
-[Unreleased]: https://github.com/caroline-jeffra/claudesidion/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/caroline-jeffra/claudesidion/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.3.0
 [0.2.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.2.0
 [0.1.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.1.0

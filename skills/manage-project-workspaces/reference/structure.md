@@ -1,7 +1,8 @@
 # Workspace structure contract
 
-There are **two** workspace layouts in this vault. Every skill that writes to a workspace must
-detect which one it is dealing with before writing anything.
+The **structured layout** is the only layout new workspaces are created in and the only one written
+to. The **flat layout** is retired but still readable, so a skill must detect which one it is dealing
+with before it reads — and, on finding a flat one, offer to migrate rather than writing to it.
 
 ## Detecting the layout
 
@@ -20,7 +21,11 @@ Never guess from the presence of a folder. `Tickets/` exists in both layouts.
 
 ---
 
-## Flat layout (the original, and still the default)
+## Flat layout (retired — read only)
+
+The original layout. **Nothing is written to it and nothing new is created in it**; a write triggers
+the migration offer in the main skill. It remains documented here because existing workspaces must
+stay readable until they are migrated.
 
 Four files in the workspace root, each stacking many entries:
 
@@ -31,15 +36,15 @@ Four files in the workspace root, each stacking many entries:
 
 Plus `Tickets/` and `Notes/` subfolders.
 
-Write to it exactly as described in the main skill: append, never overwrite.
+Read it to answer status and "what's next" questions. **Do not write to it** — not an appended log
+entry, not a ticked checkbox, not a decision. Offer the migration instead.
 
 **Do not add `type:`, `topics:`, or `status:` frontmatter to a flat-layout workspace.** Those fields
-are only read in the structured layout, and adding them here is the "extra metadata that nothing
-reads" this vault avoids.
+are only read in the structured layout, and a partially-annotated flat workspace is neither layout.
 
 ---
 
-## Structured layout
+## Structured layout (the default)
 
 One note per fact, filed by document type, with derived metadata in frontmatter.
 

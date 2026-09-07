@@ -8,6 +8,7 @@ Cases marked [T1.x] correspond to Pre-Release Plan tier-1 items. Run directly:
 
 from __future__ import annotations
 
+import json
 import shutil
 import sys
 import tempfile
@@ -321,6 +322,47 @@ try:
     )
 finally:
     shutil.rmtree(tmp3, ignore_errors=True)
+
+# ---------------------------------------------------------------------------
+section("Folder skeleton is fixed by the contract, not by config")
+# ---------------------------------------------------------------------------
+
+# New workspaces omit "folders" entirely: the skeleton is fixed by the workspace
+# contract. If the default went missing, a note in Log/ with no declared type: would
+# stop being inferred as a log, and every doctype tag would silently disappear.
+tmp4 = Path(tempfile.mkdtemp(prefix="claudesidion-vm-tests."))
+try:
+    ws = tmp4 / "Projects" / "Demo"
+    (ws / "Log").mkdir(parents=True)
+    (ws / "Decisions").mkdir(parents=True)
+    # No "folders" key at all — exactly what scaffolding now writes.
+    (ws / ".vault-config.json").write_text(
+        json.dumps({"project": "demo", "topics": {}}), encoding="utf-8"
+    )
+    cfg = vm.Config.load(ws / ".vault-config.json")
+
+    check(cfg.folders != {}, "folders defaults when the key is absent",
+          "config with no folders key produced an empty map")
+    check(cfg.doctype_for_folder("Log") == "log",
+          "Log/ still infers type log", f"got {cfg.doctype_for_folder('Log')!r}")
+    check(cfg.doctype_for_folder("Decisions") == "decision",
+          "Decisions/ still infers type decision",
+          f"got {cfg.doctype_for_folder('Decisions')!r}")
+    check(cfg.doctype_for_folder("Threads") == "thread",
+          "Threads/ still infers type thread",
+          f"got {cfg.doctype_for_folder('Threads')!r}")
+
+    # An explicit folders map must still win, so pre-contract workspaces keep working.
+    (ws / ".vault-config.json").write_text(
+        json.dumps({"project": "demo", "topics": {}, "folders": {"log": "Journal"}}),
+        encoding="utf-8",
+    )
+    cfg2 = vm.Config.load(ws / ".vault-config.json")
+    check(cfg2.doctype_for_folder("Journal") == "log",
+          "an explicit folders map still overrides the default",
+          f"got {cfg2.doctype_for_folder('Journal')!r}")
+finally:
+    shutil.rmtree(tmp4, ignore_errors=True)
 
 # ---------------------------------------------------------------------------
 print()

@@ -56,21 +56,15 @@ Open issues, open milestones, and open PRs/MRs. Keep title, number, URL, labels,
 
 **Step 5 — Map into the workspace** (append/merge, never overwrite).
 
-First detect the layout: a workspace containing `.vault-config.json` is **structured**, otherwise
-**flat**. Writing the wrong shape produces two contradictory sources of truth in one workspace.
+Ingestion always writes, so it always targets a **structured** workspace. A newly scaffolded one is
+structured by default. If the workspace already exists and is **flat** (no `.vault-config.json`),
+offer to migrate it with `migrate-workspace` first and ingest afterwards — do not write the stacked
+flat files. If the user declines, report what you found in the transcript and write nothing.
 
-**(flat)**
-- **Overview.md** — seed "What this is" from the README's intro; set trackers (issue/PR URLs);
-  fold in `docs/`/`CLAUDE.md` highlights as short bullets with links.
-- **Open Threads.md** — one `- [ ]` per open issue: `#<n> <title> — <gist> ([link](url))`. One item per
-  actionable TODO found in temp files.
-- **Progress Log.md** — a single dated ingestion entry summarizing what was imported and from where.
-- **Decisions.md** — if docs/ADRs record decisions, add one entry each (decision / rationale / link).
-
-**(structured)** — see
+See
 [manage-project-workspaces/reference/structure.md](../manage-project-workspaces/reference/structure.md)
 for the full contract.
-- **Overview.md** — as above; this file exists in both layouts.
+- **Overview.md** — seed "What this is" from the README's intro; set trackers (issue/PR URLs); fold in `docs/`/`CLAUDE.md` highlights as short bullets with links.
 - **Threads** — one note per thread of work in `Threads/` (`type: thread`, `status: open`), its open
   issues as `- [ ]` items inside. Group related issues into one thread rather than making a note per
   issue.
