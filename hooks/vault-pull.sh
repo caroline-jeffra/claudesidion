@@ -34,6 +34,8 @@ if [ -z "$VAULT" ] && [ -f "$HOME/.claude/obsidian-vault" ]; then
 fi
 VAULT="${VAULT:-$HOME/ObsidianVault}"
 
+stranded=""
+
 # Need git; if absent, stay silent.
 command -v git >/dev/null 2>&1 || exit 0
 
@@ -48,11 +50,27 @@ emit_context() {
     2>/dev/null || true
 }
 
+# --- Flush stranded commits ---------------------------------------------------
+# The SessionEnd push hook commits locally, then pushes over the network. Session teardown can
+# cancel it in the gap between the two, leaving commits that exist only on this machine — the
+# exact "user believes work is backed up when it is not" failure this plugin exists to prevent.
+# SessionStart has no teardown pressure, so a flush here reliably recovers whatever the last exit
+# stranded. Push before the pull below: these commits are already on the branch, so sending them
+# first keeps the subsequent --ff-only honest instead of racing a remote that moved on.
+if [ -n "$(git -C "$VAULT" log '@{upstream}..HEAD' --oneline 2>/dev/null)" ]; then
+  n="$(git -C "$VAULT" rev-list --count '@{upstream}..HEAD' 2>/dev/null || echo some)"
+  if git -C "$VAULT" push >/dev/null 2>&1; then
+    stranded="Pushed ${n} vault commit(s) stranded by a previous session's cancelled exit hook."
+  else
+    stranded="Vault has ${n} unpushed commit(s) from a previous session and the retry failed; they remain local-only."
+  fi
+fi
+
 if git -C "$VAULT" pull --ff-only >/dev/null 2>&1; then
   short="$(git -C "$VAULT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
-  emit_context "Obsidian vault pulled to latest (${short})."
+  emit_context "${stranded:+$stranded }Obsidian vault pulled to latest (${short})."
 else
-  emit_context "Obsidian vault pull failed (offline, no remote, or non-fast-forward); working from local state."
+  emit_context "${stranded:+$stranded }Obsidian vault pull failed (offline, no remote, or non-fast-forward); working from local state."
 fi
 
 exit 0
