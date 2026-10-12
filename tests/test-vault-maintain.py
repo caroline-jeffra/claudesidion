@@ -493,6 +493,8 @@ try:
           "---\ntype: playbook\nstatus: active\n---\n\n# Deploy\n\n- [ ] go\n")
     write(ws / "Tickets" / "ACME-13 old style.md",
           "---\ntype: ticket\nstatus: active\n---\n\n# ACME-13\n")
+    write(ws / "Decisions" / "UseRedisCache.md",
+          "---\ntype: decision\nstatus: active\nsupersedes: use-memcached\n---\n\n# Use Redis cache\n\n**Decision:** Redis.\n")
     write(tmp6 / "Archived" / "old" / "UseNewHost.md", "# dup\n")
     write(tmp6 / "Archived" / "old" / "not pascal.md", "# archived names are not checked\n")
     write(tmp6 / "Tasks Archive.md", "# Tasks archive\n")
@@ -545,6 +547,11 @@ try:
     stale = [f for f in findings if "StalePointers.md: stale-link" in f]
     check(bool(stale) and "UseOldHost" in stale[0] and "OldWork" in stale[0],
           "stale-link names both the superseded decision and the done thread", str(stale))
+    fm_ref = [f for f in findings if f.startswith("Projects/Demo/Decisions/UseRedisCache.md: broken-link")]
+    check(bool(fm_ref) and "supersedes: use-memcached" in fm_ref[0],
+          "a supersedes: value naming no note is reported", str(fm_ref))
+    check(not codes_for(findings, "UseNewHost.md") - {"dup-name"},
+          "a supersedes: value naming a real note is not reported")
     check(not any("[[ACME-12]]" in f for f in findings),
           "a bare ticket-ID link is a placeholder, not a broken link")
 
