@@ -163,13 +163,13 @@ try:
     section("[T1.6] Generated indexes must not clobber hand-written files")
     # ---------------------------------------------------------------------
 
-    hand = ws / "Topic Index.md"
+    hand = ws / "TopicIndex.md"
     hand_text = "# Topic Index\n\nMy own carefully curated links.\n"
     hand.write_text(hand_text, encoding="utf-8")
     run_maintain(tmp)
     check(
         hand.read_text(encoding="utf-8") == hand_text,
-        "[T1.6] pre-existing Topic Index.md without the generated marker is preserved",
+        "[T1.6] pre-existing TopicIndex.md without the generated marker is preserved",
         "the hook overwrote a file the user wrote by hand",
     )
 
@@ -181,7 +181,7 @@ try:
         run_maintain(tmp)
     msg = err.getvalue()
     check(
-        "Demo" in msg and "Topic Index.md" in msg,
+        "Demo" in msg and "TopicIndex.md" in msg,
         "[T1.6] the refusal names the workspace, not just the file",
         f"stderr was: {msg!r}",
     )
@@ -228,11 +228,11 @@ try:
 
     run_maintain(tmp2)
 
-    threads_idx = ws / "Threads Index.md"
-    dec_idx = ws / "Decisions Index.md"
+    threads_idx = ws / "ThreadsIndex.md"
+    dec_idx = ws / "DecisionsIndex.md"
 
-    check(threads_idx.is_file(), "[T2.1] Threads Index.md is created")
-    check(dec_idx.is_file(), "[T2.1] Decisions Index.md is created")
+    check(threads_idx.is_file(), "[T2.1] ThreadsIndex.md is created")
+    check(dec_idx.is_file(), "[T2.1] DecisionsIndex.md is created")
 
     if threads_idx.is_file():
         t = threads_idx.read_text(encoding="utf-8")
@@ -263,12 +263,12 @@ try:
           "the two writers are fighting over this file")
 
     # T1.6 protection must extend to the new indexes.
-    hand = ws / "Decisions Index.md"
+    hand = ws / "DecisionsIndex.md"
     hand.write_text("# Decisions Index\n\nHand written.\n", encoding="utf-8")
     run_maintain(tmp2)
     check(
         hand.read_text(encoding="utf-8") == "# Decisions Index\n\nHand written.\n",
-        "[T2.1] an un-marked Decisions Index.md is not clobbered",
+        "[T2.1] an un-marked DecisionsIndex.md is not clobbered",
     )
 finally:
     shutil.rmtree(tmp2, ignore_errors=True)
@@ -363,6 +363,209 @@ try:
           f"got {cfg2.doctype_for_folder('Journal')!r}")
 finally:
     shutil.rmtree(tmp4, ignore_errors=True)
+
+# ---------------------------------------------------------------------------
+section("Playbooks: a fixed folder, tracked with the threads")
+# ---------------------------------------------------------------------------
+
+tmp5 = Path(tempfile.mkdtemp(prefix="claudesidion-vm-tests."))
+try:
+    ws = tmp5 / "Projects" / "Demo"
+    (ws / "Playbooks").mkdir(parents=True)
+    (ws / ".vault-config.json").write_text(
+        json.dumps({"project": "demo", "topics": {}, "folders": {"log": "Journal"}}),
+        encoding="utf-8",
+    )
+    cfg = vm.Config.load(ws / ".vault-config.json")
+    check(cfg.doctype_for_folder("Playbooks") == "playbook",
+          "Playbooks/ infers type playbook even when a config overrides another folder",
+          f"got {cfg.doctype_for_folder('Playbooks')!r}")
+
+    (ws / "Playbooks" / "CutoverToNewHostPlaybook.md").write_text(
+        "---\nstatus: active\n---\n\n# Cutover to new host playbook\n\n"
+        "**Goal:** move.\n\n**Done when:** it serves.\n\n## Steps\n\n- [ ] **1. Copy**\n- [x] **2. Plan**\n",
+        encoding="utf-8",
+    )
+    (ws / "Playbooks" / "OldSetupPlaybook.md").write_text(
+        "---\nstatus: reference\n---\n\n# Old setup playbook\n\n- [ ] **1. Step**\n",
+        encoding="utf-8",
+    )
+    run_maintain(tmp5)
+    idx = (ws / "ThreadsIndex.md").read_text(encoding="utf-8")
+    check("Cutover to new host playbook" in idx and "**1 open**" in idx,
+          "an active playbook is listed in the Threads Index with its open count", idx)
+    check("Old setup" not in idx,
+          "a reference playbook is not listed as open work", idx)
+    check("type: playbook" in (ws / "Playbooks" / "CutoverToNewHostPlaybook.md").read_text(),
+          "playbook type is filled in from the folder")
+finally:
+    shutil.rmtree(tmp5, ignore_errors=True)
+
+# ---------------------------------------------------------------------------
+section("Lint: clean notes are silent, each violation is reported")
+# ---------------------------------------------------------------------------
+
+
+def write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def lint_vault(vault: Path) -> list[str]:
+    names = vm.VaultNames.scan(vault)
+    out: list[str] = []
+    wss = vm.find_workspaces(vault)
+    for w in wss:
+        c = vm.Config.load(w / ".vault-config.json")
+        out += vm.lint(w, c, vm.collect(w, c), names, vault)
+    return out + vm.lint_vault_level(vault, wss)
+
+
+def codes_for(findings: list[str], name: str) -> set[str]:
+    return {
+        f.split(": ", 1)[1].split(" — ", 1)[0]
+        for f in findings
+        if f.split(": ", 1)[0] == name or f.split(": ", 1)[0].endswith("/" + name)
+    }
+
+
+tmp6 = Path(tempfile.mkdtemp(prefix="claudesidion-vm-tests."))
+try:
+    ws = tmp6 / "Projects" / "Demo"
+    write(ws / ".vault-config.json", json.dumps({"project": "demo", "topics": {}}))
+
+    # --- clean, one per type
+    write(ws / "Overview.md",
+          "---\ntype: overview\nstatus: active\n---\n\n# demo\n\n**Repo path:** `demo`\n"
+          "**Current focus:** cutover\n\n## Next up\n\n- Copy data — [[CutoverTracking]]\n")
+    write(ws / "ProgressLog.md",
+          "---\ntype: log-index\nstatus: reference\n---\n\n# Progress log — demo\n\n- **[[2026-10-01]]** — did a thing\n")
+    write(ws / "Log" / "2026-10-01.md",
+          "---\ntype: log\ndate: 2026-10-01\n---\n\n# 2026-10-01\n\n- **Did:** a thing\n"
+          "- **Decided:** [[UseNewHost]]\n- **Links:** [[CutoverTracking]], [[ACME-12]], [[OldWork]]\n")
+    write(ws / "Decisions" / "UseNewHost.md",
+          "---\ntype: decision\nstatus: active\ndecided: 2026-10-01\nsupersedes: UseOldHost\n---\n\n"
+          "# Use new host\n\n**Decision:** new host.\n\n**Why:** cheaper. Links [[UseOldHost]] as its predecessor.\n")
+    write(ws / "Decisions" / "UseOldHost.md",
+          "---\ntype: decision\nstatus: superseded\nsuperseded_by: UseNewHost\n---\n\n# Use old host\n\n**Decision:** old host.\n")
+    write(ws / "Threads" / "CutoverTracking.md",
+          "---\ntype: thread\nstatus: open\n---\n\n# Cutover tracking\n\n**Goal:** done.\n\n## Open\n\n- [ ] copy\n\n## Done\n\n- [x] plan\n")
+    write(ws / "Threads" / "OldWork.md",
+          "---\ntype: thread\nstatus: done\nclosed: 2026-09-01\n---\n\n# Old work\n\n**Goal:** g.\n\n"
+          "**Outcome:** shipped.\n\n**Moved to:** [[UseNewHost]]\n")
+    write(ws / "Research" / "HostCostsAnalysis.md",
+          "---\ntype: research\nstatus: reference\n---\n\n# Host costs — analysis\n\n## TL;DR\n\n- cheaper\n\n"
+          "Came out of [[OldWork]].\n\n**Source:** a\n**Date:** b\n")
+    write(ws / "Playbooks" / "CutoverToNewHostPlaybook.md",
+          "---\ntype: playbook\nstatus: active\n---\n\n# Cutover to new host playbook\n\n**Goal:** g\n\n"
+          "**Done when:** d\n\n## Steps\n\n- [ ] **1. Copy**\n")
+    write(ws / "Tickets" / "ACME-12-NaturalSortApi.md",
+          "---\ntype: ticket\nstatus: active\n---\n\n# ACME-12 natural sort API\n\n**Goal:** g\n")
+    write(ws / "TimeTracking.md",
+          "---\ntype: time-tracking\nstatus: active\n---\n\n# Time tracking — demo\n\n**Budget:** 6 hrs/week\n\n"
+          "## Phases\n\n| Phase | Status | Estimate | Actual |\n| --- | --- | --- | --- |\n| **0 Skeleton** | done | 12 | 7.89 |\n")
+    write(tmp6 / "Resources" / "LinkChecker.md", "# Link checker\n")
+
+    # --- one violation each
+    write(ws / "Home.md", "# Home\n")
+    write(ws / "Topic Index.md", "---\ntype: index\n---\n\n# Topic Index\n\n_Generated — edits here are overwritten._\n")
+    write(ws / "Log" / "2026-10-02.md",
+          "---\ntype: log\ndate: 2026-10-02\n---\n\n# 2026-10-02\n\n### Morning\n\n- **Did:** one\n"
+          "- **Next:** two\n\n### Evening\n\n- **Did:** three\n")
+    write(ws / "Decisions" / "we-use-postgres.md",
+          "---\ntype: decision\nstatus: active\n---\n\n# We use Postgres\n\nSee [[DecisionsIndex]] and [[Decisions Index]].\n")
+    write(ws / "Decisions" / "UseAWSForHosting.md",
+          "---\ntype: decision\nstatus: active\n---\n\n# Use AWS for hosting\n\n**Decision:** AWS.\n")
+    write(ws / "Threads" / "StalePointers.md",
+          "---\ntype: thread\nstatus: open\n---\n\n# Stale pointers\n\n- [ ] follow [[UseOldHost]]\n"
+          "- [ ] after [[OldWork]]\n- [ ] read [[NoSuchNote]]\n")
+    write(ws / "Threads" / "TooLong.md",
+          "---\ntype: thread\nstatus: open\n---\n\n# Too long\n\n- [ ] x\n\n" + ("word " * 400) + "\n")
+    write(ws / "Threads" / "AllTicked.md",
+          "---\ntype: thread\nstatus: open\n---\n\n# All ticked\n\n- [x] a\n- [x] b\n")
+    write(ws / "Threads" / "DoneButFull.md",
+          "---\ntype: thread\nstatus: done\n---\n\n# Done but full\n\n- [x] a\n- [ ] b\n")
+    write(ws / "Research" / "Untitled findings.md",
+          "---\ntype: research\nstatus: reference\n---\n\n# Untitled findings\n\nThis sentence was\nwrapped at a column.\n")
+    write(ws / "Research" / "HostingNotes.md",
+          "---\ntype: research\nstatus: reference\n---\n\n# Hosting\n\n## TL;DR\n\n- x\n")
+    write(ws / "Playbooks" / "Deploy20261002Playbook.md",
+          "---\ntype: playbook\nstatus: active\n---\n\n# Deploy\n\n- [ ] go\n")
+    write(ws / "Tickets" / "ACME-13 old style.md",
+          "---\ntype: ticket\nstatus: active\n---\n\n# ACME-13\n")
+    write(tmp6 / "Archived" / "old" / "UseNewHost.md", "# dup\n")
+    write(tmp6 / "Archived" / "old" / "not pascal.md", "# archived names are not checked\n")
+    write(tmp6 / "Tasks Archive.md", "# Tasks archive\n")
+    write(tmp6 / "Resources" / "Link checker.md", "# Link checker\n")
+    write(tmp6 / "Projects" / "home-thing" / ".vault-config.json", json.dumps({"project": "ht", "topics": {}}))
+
+    # Lint runs on a maintained vault in practice: frontmatter filled in, indexes generated.
+    run_maintain(tmp6)
+    check((ws / "TopicIndex.md").exists(), "fixture has generated indexes to ignore")
+    findings = lint_vault(tmp6)
+
+    for clean in ("Overview.md", "ProgressLog.md", "2026-10-01.md", "UseOldHost.md",
+                  "CutoverTracking.md", "OldWork.md", "HostCostsAnalysis.md",
+                  "CutoverToNewHostPlaybook.md", "ACME-12-NaturalSortApi.md", "TimeTracking.md",
+                  "LinkChecker.md", "TopicIndex.md"):
+        got = codes_for(findings, clean)
+        check(not got, f"clean {clean}: no findings", f"got {sorted(got)}")
+
+    expect = {
+        "Home.md": {"root-stray"},
+        "Topic Index.md": {"legacy-name"},
+        "2026-10-02.md": {"log-next", "log-stacked"},
+        "we-use-postgres.md": {"bad-name", "index-link"},
+        "UseAWSForHosting.md": {"bad-name"},
+        "StalePointers.md": {"stale-link", "broken-link"},
+        "TooLong.md": {"over-budget"},
+        "AllTicked.md": {"unclosed-thread"},
+        "DoneButFull.md": {"unclosed-thread"},
+        "Untitled findings.md": {"bad-name", "missing-section", "hard-wrap"},
+        "HostingNotes.md": {"bad-name"},
+        "Deploy20261002Playbook.md": {"bad-name", "missing-section"},
+        "ACME-13 old style.md": {"bad-name"},
+        "Tasks Archive.md": {"legacy-name"},
+        "Link checker.md": {"bad-name"},
+    }
+    for name, want in expect.items():
+        got = codes_for(findings, name)
+        check(want <= got, f"{name}: reports {sorted(want)}", f"got {sorted(got)}")
+
+    check(any(f.startswith("Projects/home-thing/: bad-name") for f in findings),
+          "a non-PascalCase workspace folder is reported", "\n".join(findings))
+    check(not any("Archived/old/not pascal" in f for f in findings),
+          "Archived/ names are not checked")
+    gen = [f for f in findings if "Topic Index.md" in f]
+    check(bool(gen) and "delete it" in gen[0],
+          "a pre-2.0 generated index is marked for deletion, not renaming", str(gen))
+    dup = [f for f in findings if f.startswith("Projects/Demo/Decisions/UseNewHost.md: dup-name")]
+    check(bool(dup) and "Archived/old/UseNewHost.md" in dup[0],
+          "dup-name says where the other copy is", str(dup))
+    stale = [f for f in findings if "StalePointers.md: stale-link" in f]
+    check(bool(stale) and "UseOldHost" in stale[0] and "OldWork" in stale[0],
+          "stale-link names both the superseded decision and the done thread", str(stale))
+    check(not any("[[ACME-12]]" in f for f in findings),
+          "a bare ticket-ID link is a placeholder, not a broken link")
+
+    # The CLI: lint writes nothing, and --count prints just the number.
+    before = {p: p.read_bytes() for p in tmp6.rglob("*.md")}
+    import io
+    import contextlib
+    buf = io.StringIO()
+    argv = sys.argv
+    sys.argv = ["vault_maintain.py", "--lint", "--count", str(tmp6)]
+    try:
+        with contextlib.redirect_stdout(buf):
+            vm.main()
+    finally:
+        sys.argv = argv
+    check(buf.getvalue().strip() == str(len(findings)),
+          "--lint --count prints the number of findings", repr(buf.getvalue()))
+    after = {p: p.read_bytes() for p in tmp6.rglob("*.md")}
+    check(before == after, "--lint writes nothing")
+finally:
+    shutil.rmtree(tmp6, ignore_errors=True)
 
 # ---------------------------------------------------------------------------
 print()

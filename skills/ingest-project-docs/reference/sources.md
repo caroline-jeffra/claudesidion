@@ -5,7 +5,7 @@
 - GitLab commands (glab)
 - In-repo docs & temp files
 - Source → workspace mapping
-- Ingestion Progress Log entry template
+- Ingestion log template
 
 All CLI commands run from the repo's working directory. Assume the relevant CLI is authenticated for
 that repo; on a `401`/auth error, record it in the run report and continue with other sources.
@@ -65,27 +65,34 @@ Read each doc; summarize its purpose in 1–3 bullets. For temp files, extract a
 
 ## Source → workspace mapping
 
-Append/merge into the `manage-project-workspaces` files; never overwrite. Dedupe on the key shown.
+Append/merge into the structured workspace; never overwrite. Dedupe on the key shown. Formats follow the templates in [manage-project-workspaces/reference/templates.md](../../manage-project-workspaces/reference/templates.md).
 
-| Source                     | Lands in        | Form                                                       | Dedupe key      |
-|----------------------------|-----------------|-----------------------------------------------------------|-----------------|
-| README intro               | Overview.md     | "What this is" bullets                                    | —               |
-| Issue/PR tracker URLs      | Overview.md     | Trackers section                                          | url             |
-| docs/, CLAUDE.md, .claude/ | Overview.md     | Short bullet each, linked by repo path                    | file path       |
-| Open issues                | Open Threads.md | `- [ ] #<n> <title> — <gist> ([link](url))`               | issue number    |
-| TODOs in temp files        | Open Threads.md | `- [ ] <action> (from <file>)`                            | action text     |
-| Open PRs/MRs               | Open Threads.md | `- [ ] PR/MR !<n> <title> ([link](url))`                  | pr/mr number    |
-| Milestones                 | Overview.md     | "Milestones" bullets: title, due date, link              | milestone title |
-| Decisions in docs/ADRs     | Decisions.md    | one ADR entry each (decision / rationale / link)         | decision title  |
-| The ingestion run itself   | Progress Log.md | one dated entry (template below)                          | date + "Ingest" |
+| Source | Lands in | Form | Dedupe key |
+|---|---|---|---|
+| README intro | `Overview.md` | "What this is" — two or three sentences | — |
+| Issue/PR tracker URLs | `Overview.md` | Trackers section | url |
+| docs/, CLAUDE.md, .claude/ | `Overview.md` or `Research/<Subject>Reference.md` | One bullet each in the Overview, linked by repo path; a doc worth summarising gets its own research note | file path |
+| Open issues | `Threads/<NounPhrase>.md` | `- [ ] #<n> <title> ([link](url))` under `## Open`, grouped by theme into one thread | issue number |
+| TODOs in temp files | `Threads/<NounPhrase>.md` | `- [ ] <action> (from <file>)` | action text |
+| Open PRs/MRs | `Threads/<NounPhrase>.md` | `- [ ] PR/MR !<n> <title> ([link](url))` | pr/mr number |
+| Runbooks, setup or upgrade guides | `Playbooks/<Subject>Playbook.md` | Playbook template, `status: reference` | file path |
+| Milestones | `Overview.md` | `## Next up` bullets: title, due date, link | milestone title |
+| Decisions in docs/ADRs | `Decisions/<Claim>.md` | One decision note each | decision title |
+| The ingestion run itself | `Log/YYYY-MM-DD.md` + `ProgressLog.md` line | Log template (below) | date |
 
-## Ingestion Progress Log entry template
+## Ingestion log template
+
+`Log/YYYY-MM-DD.md` — merge into the day's note if it already exists. No `Next:` line; what to pick up first goes in `Overview.md`'s `## Next up`.
 
 ```markdown
-## YYYY-MM-DD — Ingested existing project context
+---
+type: log
+date: YYYY-MM-DD
+---
 
-- **Did:** Bootstrapped workspace from existing sources.
-- **Imported:** <N> open issues, <N> milestones, <N> open PRs/MRs, README + <N> docs, <N> temp files.
-- **Skipped/failed:** <source + reason, or "none">.
-- **Next:** Review Open Threads and set current focus in [[Overview]].
+# YYYY-MM-DD
+
+- **Did:** Bootstrapped the workspace from existing sources — <N> open issues, <N> milestones, <N> open PRs/MRs, README + <N> docs, <N> temp files.
+- **Learned:** <sources that failed or were empty, with the reason; omit if none>
+- **Links:** [[<thread>]], [[<thread>]]
 ```

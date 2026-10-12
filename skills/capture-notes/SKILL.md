@@ -15,8 +15,9 @@ Repo-specific development work (progress logs, decisions, TODOs for a codebase) 
 
 ## Workflow
 
-1. **Decide the note's title.** A concise noun phrase in Title Case, e.g. `Rate Limiting Strategies`.
-   The filename is `<Title>.md` (spaces allowed — Obsidian handles them).
+1. **Decide the note's name.** A concise noun phrase in PascalCase, e.g. `RateLimitingStrategies` —
+   acronyms as words (`ApiDesignNotes`), no spaces or punctuation. The filename is `<Name>.md`; the
+   `# Heading` is the readable form (`# Rate limiting strategies`).
 2. **Pick the folder** (see below). Create it under the vault if it does not exist yet.
 3. **Check for an existing note** with that title in the chosen folder. If one exists, edit/append
    rather than overwriting — never clobber existing content.
@@ -29,7 +30,7 @@ Repo-specific development work (progress logs, decisions, TODOs for a codebase) 
 Two rules govern all markdown written to the vault:
 
 - **No hard line breaks inside a text block.** Each paragraph or bullet is one source line, however long; blank lines separate paragraphs. Obsidian soft-wraps to the pane width — never wrap prose to a column width.
-- **ADHD-friendly prose** — clarity, not brevity: short one-idea sentences, the point stated first, visible structure (headings, bullets, **bold** key terms), and explanations spelled out rather than compressed.
+- **Scan-first prose.** Write for someone scanning for one fact: the answer first, bullets and `**Key:** value` pairs over paragraphs (at most three short sentences each), outcome rather than process, and a link to the note that owns a fact rather than a restatement of it. Full rules: [capture-notes/reference/conventions.md](reference/conventions.md).
 
 ## Keep vault I/O out of the transcript
 
@@ -57,11 +58,11 @@ created: YYYY-MM-DD
 tags: [tag-one, tag-two]
 ---
 
-# <Title>
+# <Readable title>
 
 <The note body. Lead with the core idea in one or two sentences, then detail.>
 
-Related: [[Another Note]], [[Some Concept]]
+Related: [[AnotherNote]], [[SomeConcept]]
 ```
 
 - `created`: today's date as `YYYY-MM-DD`.

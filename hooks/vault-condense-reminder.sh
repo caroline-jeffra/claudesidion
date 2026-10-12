@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # SessionStart hook: remind that the weekly vault condense run (condense-vault skill) is due
-# when the last run was more than 7 days ago (or has never happened). The skill stamps
-# $VAULT/.condense-last-run with YYYY-MM-DD on every run.
+# when the last run was more than 7 days ago (or has never happened) and there is work for it:
+# stale content to condense, or workspace notes that break their format (lint findings) to
+# reconcile. The skill stamps $VAULT/.condense-last-run with YYYY-MM-DD on every run.
 #
 # Fails open on every path: if anything is missing or goes wrong, exit 0 with no output.
 
@@ -50,8 +51,26 @@ else
   routine=""
 fi
 
+# Format findings: notes that break the workspace note contract. The run's reconcile step fixes
+# these whatever their age, so they are work for the run on a vault too young to have anything
+# stale. Same interpreter discovery as vault-maintain.sh; any failure just means a count of 0.
+lint_count=0
+PY=""
+for candidate in python3 python; do
+  command -v "$candidate" >/dev/null 2>&1 && { PY="$candidate"; break; }
+done
+SCRIPT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$0")/..}/hooks/vault_maintain.py"
+if [ -n "$PY" ] && [ -f "$SCRIPT" ]; then
+  lint_count="$("$PY" "$SCRIPT" --lint --count "$VAULT" 2>/dev/null | tr -cd '0-9')"
+  lint_count="${lint_count:-0}"
+fi
+if [ "$lint_count" -gt 0 ] 2>/dev/null; then
+  ctx="$ctx ${lint_count} workspace format finding(s) are waiting for its reconcile step."
+fi
+
 # A due stamp is necessary but not sufficient for the ROUTINE weekly nudge: if nothing is
-# old enough to condense, prompting produces a run that finds nothing. That happened weekly
+# old enough to condense and nothing breaks the note formats, prompting produces a run that
+# finds nothing. That happened weekly
 # on a vault younger than the 3-month threshold.
 #
 # This gate deliberately does not apply when the run has NEVER been recorded. That message
@@ -64,6 +83,7 @@ fi
 stale_cutoff="$(date -v-3m +%Y-%m-%d 2>/dev/null || date -d '-3 months' +%Y-%m-%d 2>/dev/null)"
 if [ -n "$routine" ] && [ -n "$stale_cutoff" ]; then
   found=""
+  [ "$lint_count" -gt 0 ] 2>/dev/null && found=yes
   # Oldest mtime in the vault. BSD and GNU `stat` take different flags — and crucially GNU
   # `stat` does NOT fail on the BSD form: it reads `%Sm` as a filename, writes an error to
   # stderr, and still exits 0. So `bsd || gnu` silently keeps the empty BSD result on Linux.

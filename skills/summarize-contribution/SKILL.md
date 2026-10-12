@@ -26,7 +26,7 @@ vault by absolute path; derive the project from the working directory.
 $OBSIDIAN_VAULT/Contributions/<project>.md
 ```
 
-- `<project>` is the workspace folder name from `Projects/_index.md` — so `Contributions/Portal.md`
+- `<project>` is the workspace folder name from `Projects/WorkspaceIndex.md` — so `Contributions/Portal.md`
   pairs with `Projects/Portal/`. Matching names keep `[[wikilinks]]` resolving in both directions.
 - Create `Contributions/` if it is missing. Do **not** nest by year, employer, or status — one flat
   folder, one file per project, updated in place over the project's whole life.
@@ -153,7 +153,7 @@ Contribution summary progress:
 ### Step 1 — Locate the project and its existing summary
 
 1. Get the repo root (`git rev-parse --show-toplevel`, falling back to cwd) and read
-   `$OBSIDIAN_VAULT/Projects/_index.md` to find the workspace folder. Rows hold paths relative to the machine's code root (`CODE_ROOT`, else `~/.claude/code-root`, else `~/code`); a row starting with `/` is absolute. That
+   `$OBSIDIAN_VAULT/Projects/WorkspaceIndex.md` (`Projects/_index.md` in a vault from before 2.0) to find the workspace folder. Rows hold paths relative to the machine's code root (`CODE_ROOT`, else `~/.claude/code-root`, else `~/code`); a row starting with `/` is absolute. That
    folder's name is `<project>`.
 
    **If there is no row**, the project has no workspace. `<project>` is then undefined, and guessing

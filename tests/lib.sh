@@ -83,7 +83,7 @@ build_vault() {
 
   local v="$TEST_TMP/$name"
   mkdir -p "$v/Projects"
-  printf '# Notes\n' > "$v/Projects/note.md"
+  printf '# Notes\n' > "$v/Projects/Note.md"
 
   if [ "$do_git" -eq 1 ]; then
     git -C "$v" init -q
