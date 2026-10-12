@@ -1037,6 +1037,13 @@ def lint(root: Path, cfg: Config, notes: list[Note], names: VaultNames, vault: P
         broken = sorted({
             t for t in targets if not TICKET_ID.match(t) and not names.resolves(t)
         })
+        # Supersession is recorded in frontmatter, not as a link, so a rename that only
+        # rewrites [[links]] leaves these pointing at a name that no longer exists.
+        for key in ("supersedes", "superseded_by"):
+            for ref in as_list(n.meta.get(key)):
+                ref = ref.strip().strip("[]")
+                if ref and not names.resolves(ref):
+                    report(n, "broken-link", f"frontmatter {key}: {ref} — no note has that name")
         if broken:
             report(n, "broken-link", ", ".join(f"[[{t}]]" for t in broken[:5])
                    + (f" (+{len(broken) - 5} more)" if len(broken) > 5 else ""))

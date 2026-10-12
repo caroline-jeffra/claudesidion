@@ -14,6 +14,12 @@ are minor.
 
 ## [Unreleased]
 
+## [2.0.1] — 2026-10-12
+
+### Fixed
+
+- **The lint now checks `supersedes:` and `superseded_by:` values.** Supersession lives in frontmatter, not in a link, so a rename that rewrote only `[[links]]` left these pointing at names that no longer exist, unreported. They are now `broken-link` findings.
+
 ## [2.0.0] — 2026-10-12
 
 ### Breaking
