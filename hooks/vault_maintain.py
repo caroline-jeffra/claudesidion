@@ -18,6 +18,10 @@ What it does, per workspace:
      vocabulary), and the derived `topic/*` / doctype tags.
   3. Regenerates the index notes from what it found.
 
+With `--lint`, it writes nothing at all: it reports every note that breaks the format contract
+(skills/manage-project-workspaces/reference/structure.md), one line each, for `condense-vault` to
+work through. `--lint --count` prints only the number of findings.
+
 A workspace opts in by containing a `.vault-config.json`. Workspaces without
 one are ignored entirely, so this is safe to run across a mixed vault where
 most projects still use the old flat layout.
@@ -214,6 +218,7 @@ def emit_frontmatter(fields: dict[str, object]) -> str:
 DEFAULT_FOLDERS: dict[str, str] = {
     "ticket": "Tickets",
     "epic": "Epics",
+    "playbook": "Playbooks",
     "research": "Research",
     "note": "Notes",
     "decision": "Decisions",
@@ -239,7 +244,9 @@ class Config:
         raw = json.loads(path.read_text(encoding="utf-8"))
         return cls(
             project=raw["project"],
-            folders=raw.get("folders") or dict(DEFAULT_FOLDERS),
+            # Merged, not replaced: an override for one type must not hide a folder added to the
+            # contract after that workspace's config was written (Playbooks/, in 1.2).
+            folders={**DEFAULT_FOLDERS, **(raw.get("folders") or {})},
             root_notes=set(raw.get("root_notes", [])),
             index_types=set(raw.get("index_types", [])),
             topics=raw.get("topics", {}),
@@ -350,6 +357,9 @@ def refresh_metadata(notes: list[Note], cfg: Config) -> list[str]:
     # well makes the two writers fight: the builder adds its own fields, this
     # pass strips them as unknown, and every run reports a change forever.
     generated_files = {
+        "TopicIndex.md", "TicketsIndex.md",
+        "ThreadsIndex.md", "DecisionsIndex.md",
+        # Their pre-2.0 names: stale copies awaiting removal by condense-vault, not notes.
         "Topic Index.md", "Tickets Index.md",
         "Threads Index.md", "Decisions Index.md",
     }
@@ -427,6 +437,7 @@ def refresh_metadata(notes: list[Note], cfg: Config) -> list[str]:
 TYPE_PLURAL = {
     "ticket": ("Ticket", "Tickets"),
     "epic": ("Epic", "Epics"),
+    "playbook": ("Playbook", "Playbooks"),
     "research": ("Research", "Research"),
     "note": ("Note", "Notes"),
     "decision": ("Decision", "Decisions"),
@@ -435,8 +446,8 @@ TYPE_PLURAL = {
     "log": ("Log day", "Log days"),
 }
 TYPE_RANK = {
-    "research": 0, "epic": 1, "ticket": 2, "note": 3,
-    "decision": 4, "convention": 5, "thread": 6, "log": 7,
+    "playbook": 0, "research": 1, "epic": 2, "ticket": 3, "note": 4,
+    "decision": 5, "convention": 6, "thread": 7, "log": 8,
 }
 
 
@@ -456,7 +467,7 @@ def write_if_changed(path: Path, content: str) -> bool:
     """Write a generated file, refusing to clobber one this tool did not author.
 
     T1.6: the index filenames are ordinary names a user may already have used. Overwriting
-    a hand-written `Topic Index.md` destroys it with no backup — and the warning that edits
+    a hand-written `TopicIndex.md` destroys it with no backup — and the warning that edits
     are overwritten only appears in the file *after* it has already been overwritten.
     """
     content = content.rstrip() + "\n"
@@ -467,7 +478,7 @@ def write_if_changed(path: Path, content: str) -> bool:
                 return False
             if GENERATED_MARKER not in existing:
                 # Name the workspace, not just the file. Index filenames repeat across
-                # workspaces, so a bare "Threads Index.md exists" in a multi-workspace run
+                # workspaces, so a bare "ThreadsIndex.md exists" in a multi-workspace run
                 # is unattributable — the reader cannot tell which one to go and look at.
                 print(
                     f"vault-maintain: {path.parent.name}: {path.name} exists and was not "
@@ -526,7 +537,7 @@ def build_topic_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
             "earlier than that and a topic is noise. The next session-end run picks them up and "
             "fills this page in.",
         ]
-        return write_if_changed(root / "Topic Index.md", "\n".join(lines))
+        return write_if_changed(root / "TopicIndex.md", "\n".join(lines))
 
     ordered = sorted(by_topic, key=lambda s: cfg.topics[s]["name"].lower())
     letters = sorted({cfg.topics[s]["name"][0].upper() for s in ordered})
@@ -563,7 +574,7 @@ def build_topic_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
             lines += [f"- [[{n.name}]]" for n in items]
             lines.append("")
 
-    return write_if_changed(root / "Topic Index.md", "\n".join(lines))
+    return write_if_changed(root / "TopicIndex.md", "\n".join(lines))
 
 
 def build_ticket_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
@@ -614,7 +625,7 @@ def build_ticket_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
             bits.append(f"{len(logs)} log day{'s' if len(logs) != 1 else ''}")
         lines.append(f"- {head}" + (" — " + ", ".join(bits) if bits else ""))
 
-    return write_if_changed(root / "Tickets Index.md", "\n".join(lines))
+    return write_if_changed(root / "TicketsIndex.md", "\n".join(lines))
 
 
 def link(n: Note) -> str:
@@ -642,15 +653,20 @@ def open_items(n: Note) -> int:
 
 
 def build_thread_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
-    """Threads, open work first.
+    """Threads and active playbooks, open work first.
 
-    This is the file `manage-project-workspaces` reads first to answer "what's next", so
-    ordering is the feature: threads with outstanding items come first, most-open first,
-    and finished threads sink to a separate section.
+    This is the file `manage-project-workspaces` reads to answer "what's next", so ordering is
+    the feature: work with outstanding items comes first, most-open first, and finished threads
+    sink to a separate section. A playbook being executed is the tracker for its work (the
+    contract forbids mirroring it into a thread), so an active one is listed with the threads.
     """
     threads = [n for n in notes if n.doctype == "thread"]
+    playbooks = [
+        n for n in notes
+        if n.doctype == "playbook" and str(n.meta.get("status", "")).lower() == "active"
+    ]
 
-    live, finished = [], []
+    live, finished = list(playbooks), []
     for n in threads:
         (finished if str(n.meta.get("status", "")).lower() == "done" else live).append(n)
 
@@ -664,15 +680,15 @@ def build_thread_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
         "",
         "# Threads Index",
         "",
-        "Every thread of unfinished work, most open items first.",
+        "Every thread of unfinished work and active playbook, most open items first.",
         "",
         "_Generated — edits here are overwritten._",
         "",
     ]
 
-    if not threads:
+    if not threads and not playbooks:
         lines.append("_No threads yet._")
-        return write_if_changed(root / "Threads Index.md", "\n".join(lines))
+        return write_if_changed(root / "ThreadsIndex.md", "\n".join(lines))
 
     if live:
         lines.append("## Open")
@@ -680,7 +696,8 @@ def build_thread_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
         for n in live:
             count = open_items(n)
             head = f"**{count} open**" if count else f"_{n.meta.get('status', 'open')}_"
-            lines.append(f"- {head} — {link(n)}")
+            kind = " _(playbook)_" if n.doctype == "playbook" else ""
+            lines.append(f"- {head} — {link(n)}{kind}")
         lines.append("")
 
     if finished:
@@ -689,7 +706,7 @@ def build_thread_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
         lines += [f"- {link(n)}" for n in finished]
         lines.append("")
 
-    return write_if_changed(root / "Threads Index.md", "\n".join(lines))
+    return write_if_changed(root / "ThreadsIndex.md", "\n".join(lines))
 
 
 def build_decision_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
@@ -716,7 +733,7 @@ def build_decision_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
 
     if not items:
         lines.append("_No decisions recorded yet._")
-        return write_if_changed(root / "Decisions Index.md", "\n".join(lines))
+        return write_if_changed(root / "DecisionsIndex.md", "\n".join(lines))
 
     decisions = [n for n in items if n.doctype == "decision"]
     conventions = [n for n in items if n.doctype == "convention"]
@@ -751,7 +768,314 @@ def build_decision_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
             lines.append(f"- {link(n)}{tail}")
         lines.append("")
 
-    return write_if_changed(root / "Decisions Index.md", "\n".join(lines))
+    return write_if_changed(root / "DecisionsIndex.md", "\n".join(lines))
+
+
+# ---------------------------------------------------------------- lint
+#
+# Report-only: lint never writes. It checks notes against the format contract in
+# skills/manage-project-workspaces/reference/structure.md, and `condense-vault` works through
+# what it finds. Every check is a heuristic tuned to say nothing on a note that follows its
+# template — a noisy lint gets ignored, which is worse than none.
+
+ROOT_FILES = {
+    "Overview", "ProgressLog", "TopicIndex", "TicketsIndex", "DecisionsIndex", "ThreadsIndex",
+    "TimeTracking",
+}
+INDEX_NAMES = {"TopicIndex", "TicketsIndex", "DecisionsIndex", "ThreadsIndex"}
+
+# Pre-2.0 names of the structural files. A generated one is simply stale (its replacement is
+# regenerated beside it); a hand-written one is renamed.
+LEGACY_ROOT = {
+    "Progress Log": "ProgressLog", "Topic Index": "TopicIndex", "Tickets Index": "TicketsIndex",
+    "Decisions Index": "DecisionsIndex", "Threads Index": "ThreadsIndex",
+    "Time Tracking": "TimeTracking",
+}
+
+# Body words, excluding frontmatter and fenced code. Types not listed have no budget.
+BUDGETS = {
+    "log": 150, "decision": 150, "convention": 150, "overview": 200, "ticket": 250,
+    "thread": 300,
+}
+
+# Notes that state current truth. Logs are history; indexes are generated.
+CURRENT_STATE = {
+    "overview", "thread", "playbook", "decision", "convention", "research", "note", "ticket",
+    "epic",
+}
+
+RESEARCH_KINDS = ("Audit", "Analysis", "Plan", "Spec", "Review", "Map", "Reference")
+
+# PascalCase with acronyms written as words: `AdminApiAudit`, never `AdminAPIAudit`. Three
+# capitals in a row is the tell of an acronym kept upper-case; two can be a one-letter word
+# (`PlanAForHosting`).
+PASCAL = re.compile(r"^(?:[A-Z][a-z0-9]*)+$")
+ACRONYM = re.compile(r"[A-Z]{3,}")
+# A date in a name, hyphenated or run together as PascalCase leaves it (`Review20261002`).
+DATE = re.compile(r"\d{4}-\d{2}-\d{2}|(?:19|20)\d{2}[01]\d[0-3]\d")
+LOG_NAME = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+TICKET_NAME = re.compile(r"^[A-Z][A-Z0-9]+-\d+-(?:[A-Z][a-z0-9]*)+$")
+# A bare ticket ID as a link target. These are deliberate placeholders for a ticket with no
+# note yet (the Tickets Index lists them), not broken links.
+TICKET_ID = re.compile(r"^[A-Z][A-Z0-9]+-\d+$")
+WIKILINK = re.compile(r"(!?)\[\[([^\]\n]+?)\]\]")
+NEXT_LINE = re.compile(r"^\s*(?:[-*]\s+)?(?:\*\*)?Next\b\s*:?(?:\*\*)?\s*:?", re.I | re.M)
+DID_LINE = re.compile(r"^\s*[-*]\s+\*\*Did\b", re.M)
+SUBHEADING = re.compile(r"^#{2,6}\s", re.M)
+# A line that cannot be the second half of a hard-wrapped paragraph: blank, or the start of
+# some other block (heading, list item, quote, table, callout, HTML, embed, indent).
+BLOCK_START = re.compile(r"^(\s*$|\s|#|[-*+]\s|\d+[.)]\s|>|\||<|!\[|\[\^|---|\*\*\*)")
+
+
+def strip_code(body: str) -> str:
+    """The body with fenced code blocks and inline code removed — they are not prose."""
+    out, fence = [], None
+    for line in body.splitlines():
+        m = re.match(r"^\s*(`{3,}|~{3,})", line)
+        if m:
+            if fence is None:
+                fence = m.group(1)[0]
+            elif m.group(1)[0] == fence:
+                fence = None
+            continue
+        if fence is None:
+            out.append(re.sub(r"`[^`\n]*`", "", line))
+    return "\n".join(out)
+
+
+def link_targets(text: str) -> list[str]:
+    """Wikilink targets in prose: `[[a|b]]`, `[[a\\|b]]` and `[[a#h]]` all yield `a`.
+
+    Embeds of non-markdown files (`![[diagram.png]]`) are skipped — they are attachments, not
+    notes, and the vault's attachment folder is not ours to check.
+    """
+    found = []
+    for embed, inner in WIKILINK.findall(text):
+        target = re.split(r"\\?\||#", inner, maxsplit=1)[0].strip()
+        if not target:
+            continue
+        suffix = Path(target).suffix.lower()
+        if suffix and suffix != ".md" and (embed or len(suffix) <= 5):
+            continue
+        found.append(target[:-3] if target.endswith(".md") else target)
+    return found
+
+
+def hard_wraps(prose: str) -> int:
+    """Count places a sentence is broken across two source lines.
+
+    Obsidian renders a single newline as a line break, so consecutive prose lines are not by
+    themselves a fault — stacked `**Key:** value` lines are a legitimate layout. A hard wrap is
+    the narrower case of a line that stops mid-sentence and a next line that carries on in
+    lowercase.
+    """
+    count, prev = 0, ""
+    for line in prose.splitlines():
+        if (
+            prev
+            and not BLOCK_START.match(line)
+            and re.match(r"^[a-z(]", line)
+            and not re.search(r"[.!?:;]\W*$", prev)
+        ):
+            count += 1
+        prev = "" if BLOCK_START.match(line) and not line.startswith(("- ", "* ", "> ")) else line.rstrip()
+        if not prev.strip():
+            prev = ""
+    return count
+
+
+@dataclass
+class VaultNames:
+    """Every markdown note in the vault, for resolving links across workspaces."""
+    stems: dict[str, list[str]]              # stem -> vault-relative paths holding it
+    paths: set[str]                          # vault-relative, no `.md`
+
+    @classmethod
+    def scan(cls, vault: Path) -> "VaultNames":
+        stems: dict[str, list[str]] = defaultdict(list)
+        paths: set[str] = set()
+        for p in sorted(vault.rglob("*.md")):
+            rel = p.relative_to(vault)
+            if any(part.startswith(".") for part in rel.parts):
+                continue
+            stems[p.stem].append(rel.as_posix())
+            paths.add(rel.with_suffix("").as_posix())
+        return cls(dict(stems), paths)
+
+    def resolves(self, target: str) -> bool:
+        """Whether a link target names some note — bare by stem, or by a trailing path."""
+        if "/" not in target:
+            return target in self.stems
+        t = target.strip("/")
+        return any(p == t or p.endswith("/" + t) for p in self.paths)
+
+
+def pascal_problem(name: str) -> str | None:
+    """Why a name is not PascalCase-with-acronyms-as-words, or None if it is."""
+    if not PASCAL.match(name):
+        return "name must be PascalCase — no spaces, hyphens, underscores or dashes"
+    if ACRONYM.search(name):
+        return "write acronyms as words — `ApiAudit`, not `APIAudit`"
+    return None
+
+
+def name_problem(n: Note) -> str | None:
+    name, t = n.name, n.doctype
+    if t == "log":
+        return None if LOG_NAME.match(name) else "log name must be YYYY-MM-DD"
+    if DATE.search(name):
+        return "date in name — dates belong in frontmatter"
+    if t == "ticket":
+        if TICKET_NAME.match(name) and not ACRONYM.search(name.split("-", 2)[-1]):
+            return None
+        return "ticket name must be '<TICKET-ID>-<PascalCaseSubject>'"
+    problem = pascal_problem(name)
+    if problem:
+        return problem
+    if t in ("decision", "convention") and len(re.findall(r"[A-Z]", name)) > 10:
+        return "decision name longer than ~10 words — name the claim, not the sentence"
+    if t == "research" and not name.endswith(RESEARCH_KINDS):
+        return "research name must end in its kind: " + ", ".join(RESEARCH_KINDS)
+    if t == "playbook" and not name.endswith("Playbook"):
+        return "playbook name must end in 'Playbook'"
+    return None
+
+
+def missing_sections(n: Note) -> list[str]:
+    body = n.body
+    want: list[tuple[str, str]] = []
+    if n.doctype == "overview":
+        want = [(r"^##\s+Next up\b", "## Next up")]
+    elif n.doctype == "research":
+        want = [(r"^##\s+TL;?DR\b", "## TL;DR")]
+    elif n.doctype == "time-tracking":
+        want = [(r"^##\s+Phases\b", "## Phases")]
+    elif n.doctype == "playbook":
+        want = [
+            (r"^\*\*Goal:\*\*", "**Goal:**"),
+            (r"^\*\*Done when:\*\*", "**Done when:**"),
+            (r"^##\s+Steps\b", "## Steps"),
+        ]
+    return [label for pat, label in want if not re.search(pat, body, re.M | re.I)]
+
+
+def lint(root: Path, cfg: Config, notes: list[Note], names: VaultNames, vault: Path) -> list[str]:
+    """Every way the workspace breaks its note-format contract, one line per note and problem."""
+    out: list[str] = []
+    by_name = {n.name: n for n in notes}
+
+    def report(n: Note, code: str, detail: str) -> None:
+        out.append(f"{n.path.relative_to(vault).as_posix()}: {code} — {detail}")
+
+    for n in sorted(notes, key=lambda n: n.path):
+        stray = False
+        if n.path.parent == root:
+            if n.name in LEGACY_ROOT:
+                new = LEGACY_ROOT[n.name]
+                if GENERATED_MARKER in n.body:
+                    report(n, "legacy-name", f"pre-2.0 generated index — delete it; it is regenerated as {new}.md")
+                else:
+                    report(n, "legacy-name", f"pre-2.0 name — rename to {new}.md and update links")
+                continue
+            if n.name not in ROOT_FILES and n.path.name not in cfg.root_notes:
+                stray = True
+                report(n, "root-stray", "only the contract files belong in a workspace root")
+            if n.name in INDEX_NAMES:
+                continue                     # generated; nothing else to check
+
+        status = str(n.meta.get("status", "") or "").lower()
+        prose = strip_code(n.body)
+
+        problem = None if stray else name_problem(n)
+        if problem:
+            report(n, "bad-name", problem)
+
+        if n.doctype == "thread":
+            boxes = re.findall(r"^\s*[-*]\s+\[( |x|X)\]", n.body, re.M)
+            if status == "done" and boxes:
+                report(n, "unclosed-thread", "done thread still holds its item list — reduce it to the closing stub")
+            elif status != "done" and boxes and " " not in boxes:
+                report(n, "unclosed-thread", f"all {len(boxes)} items ticked — close the thread")
+
+        if n.doctype == "time-tracking":
+            words = sum(
+                len(line.split()) for line in prose.splitlines()
+                if not line.lstrip().startswith(("|", "#"))
+            )
+            if words > 60:
+                report(n, "over-budget", f"{words} words outside the tables (budget 60) — link the detail instead")
+
+        # Logs share date names across workspaces by design, the root files exist once per
+        # workspace by design, and a stray is already reported — moving it settles its name.
+        if n.doctype != "log" and n.name not in ROOT_FILES and not stray:
+            mine = n.path.relative_to(vault).as_posix()
+            others = [p for p in names.stems.get(n.name, []) if p != mine]
+            if others:
+                report(n, "dup-name", "also at " + ", ".join(others[:3])
+                       + (f" (+{len(others) - 3} more)" if len(others) > 3 else ""))
+
+        budget = BUDGETS.get(n.doctype)
+        if budget:
+            words = len(prose.split())
+            if words > budget:
+                report(n, "over-budget", f"{words} words (budget {budget})")
+
+        for label in missing_sections(n):
+            report(n, "missing-section", f"no {label}")
+
+        if n.doctype == "log":
+            nexts = len(NEXT_LINE.findall(prose))
+            if nexts:
+                report(n, "log-next", f"{nexts} Next line(s) — next work belongs in the Overview")
+            blocks = len(DID_LINE.findall(prose))
+            subs = len(SUBHEADING.findall(prose))
+            if blocks > 1 or subs:
+                report(n, "log-stacked", f"{max(blocks, 1)} Did block(s), {subs} sub-heading(s) — merge into one block")
+
+        targets = link_targets(prose)
+
+        broken = sorted({
+            t for t in targets if not TICKET_ID.match(t) and not names.resolves(t)
+        })
+        if broken:
+            report(n, "broken-link", ", ".join(f"[[{t}]]" for t in broken[:5])
+                   + (f" (+{len(broken) - 5} more)" if len(broken) > 5 else ""))
+
+        if n.doctype in CURRENT_STATE and n.doctype != "overview":
+            idx = sorted({
+                t for t in targets
+                if t.split("/")[-1] in INDEX_NAMES or LEGACY_ROOT.get(t.split("/")[-1]) in INDEX_NAMES
+            })
+            if idx:
+                report(n, "index-link", ", ".join(f"[[{t}]]" for t in idx)
+                       + " — link the specific note instead")
+
+        # A rule that is no longer true must not be cited as current from anywhere. Finished
+        # work is different: a decision or note linking the thread it came out of is provenance.
+        # Only the notes that say what is happening NOW — the overview, and live threads and
+        # playbooks — must not point at finished work.
+        if n.doctype in CURRENT_STATE and status not in ("superseded", "done"):
+            supersedes = set(as_list(n.meta.get("supersedes")))
+            tracks_now = n.doctype in ("overview", "thread", "playbook")
+            stale = []
+            for t in sorted(set(targets)):
+                target = by_name.get(t.split("/")[-1])
+                if target is None or target is n:
+                    continue
+                tstatus = str(target.meta.get("status", "") or "").lower()
+                if target.doctype in ("decision", "convention") and tstatus == "superseded":
+                    if target.name not in supersedes:
+                        stale.append(f"[[{t}]] (superseded)")
+                elif tracks_now and target.doctype in ("thread", "playbook") and tstatus == "done":
+                    stale.append(f"[[{t}]] (done)")
+            if stale:
+                report(n, "stale-link", ", ".join(stale))
+
+        wraps = hard_wraps(prose)
+        if wraps:
+            report(n, "hard-wrap", f"{wraps} wrapped line(s) — one line per block")
+
+    return out
 
 
 # ---------------------------------------------------------------- main
@@ -769,13 +1093,13 @@ def maintain(root: Path) -> list[str]:
 
     messages = refresh_metadata(notes, cfg)
     if build_topic_index(root, cfg, notes):
-        messages.append("Topic Index.md regenerated")
+        messages.append("TopicIndex.md regenerated")
     if build_ticket_index(root, cfg, notes):
-        messages.append("Tickets Index.md regenerated")
+        messages.append("TicketsIndex.md regenerated")
     if build_thread_index(root, cfg, notes):
-        messages.append("Threads Index.md regenerated")
+        messages.append("ThreadsIndex.md regenerated")
     if build_decision_index(root, cfg, notes):
-        messages.append("Decisions Index.md regenerated")
+        messages.append("DecisionsIndex.md regenerated")
     return messages
 
 
@@ -820,11 +1144,81 @@ def find_workspaces(vault: Path) -> list[Path]:
     return sorted(found)
 
 
+# Pre-2.0 names of the plugin's vault-level notes.
+LEGACY_VAULT = {
+    "Projects/_index.md": "Projects/WorkspaceIndex.md",
+    "Tasks Archive.md": "TasksArchive.md",
+    "Work Planning.md": "WorkPlanning.md",
+}
+
+
+def lint_vault_level(vault: Path, workspaces: list[Path]) -> list[str]:
+    """Naming outside the workspaces: every note in the vault is PascalCase, and so are the
+    workspace folders. `Archived/` is expendable by design and is not checked."""
+    out: list[str] = []
+    for ws in workspaces:
+        if ws != vault:
+            problem = pascal_problem(ws.name)
+            if problem:
+                out.append(f"{ws.relative_to(vault).as_posix()}/: bad-name — workspace folder: {problem}"
+                           " (rename it, its WorkspaceIndex row, its Contributions note and links)")
+    for p in sorted(vault.rglob("*.md")):
+        rel = p.relative_to(vault)
+        if any(part.startswith(".") for part in rel.parts) or rel.parts[0] == "Archived":
+            continue
+        if any(p.is_relative_to(ws) for ws in workspaces):
+            continue
+        key = rel.as_posix()
+        if key in LEGACY_VAULT:
+            out.append(f"{key}: legacy-name — pre-2.0 name — rename to {LEGACY_VAULT[key]} and update links")
+            continue
+        if LOG_NAME.match(p.stem):
+            continue
+        problem = pascal_problem(p.stem)
+        if problem:
+            out.append(f"{key}: bad-name — {problem}")
+    return out
+
+
+def run_lint(vault: Path, count_only: bool) -> int:
+    names = VaultNames.scan(vault)
+    workspaces = find_workspaces(vault)
+    findings: list[str] = []
+    for ws in workspaces:
+        try:
+            cfg = Config.load(ws / ".vault-config.json")
+            findings += lint(ws, cfg, collect(ws, cfg), names, vault)
+        except Exception as exc:                       # noqa: BLE001 - fail open
+            print(f"vault-lint: {ws.name}: {exc}", file=sys.stderr)
+    try:
+        findings += lint_vault_level(vault, workspaces)
+    except Exception as exc:                           # noqa: BLE001 - fail open
+        print(f"vault-lint: vault level: {exc}", file=sys.stderr)
+    if count_only:
+        print(len(findings))
+    else:
+        for f in findings:
+            print(f)
+        print(f"vault-lint: {len(findings)} finding(s)")
+    return 0
+
+
 def main() -> int:
-    vault = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+    args = sys.argv[1:]
+    lint_mode = "--lint" in args
+    count_only = "--count" in args
+    paths = [a for a in args if not a.startswith("--")]
+    vault = Path(paths[0]) if paths else None
     if vault is None or not vault.is_dir():
-        print("usage: vault_maintain.py <vault-path>", file=sys.stderr)
+        print("usage: vault_maintain.py [--lint [--count]] <vault-path>", file=sys.stderr)
         return 0                      # fail open
+
+    if lint_mode:
+        try:
+            return run_lint(vault, count_only)
+        except Exception as exc:                       # noqa: BLE001 - fail open
+            print(f"vault-lint: {exc}", file=sys.stderr)
+            return 0
 
     total: list[str] = []
     for ws in find_workspaces(vault):

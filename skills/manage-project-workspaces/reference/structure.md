@@ -1,13 +1,10 @@
 # Workspace structure contract
 
-Every workspace uses the structured layout: one note per fact, filed by document type, with derived
-metadata in frontmatter. The flat layout was retired in 1.0.
+Every workspace uses the structured layout: one note per fact, filed by document type, with derived metadata in frontmatter. The flat layout was retired in 1.0.
 
 ## Detecting the layout
 
-A workspace is valid if it contains `.vault-config.json`. A workspace without one predates 1.0 and
-is **not supported** — it can neither be read nor written. Tell the user to pin to `v0.4.x`, run
-`migrate-workspace`, and upgrade again.
+A workspace is valid if it contains `.vault-config.json`. A workspace without one predates 1.0 and is **not supported** — it can neither be read nor written. Tell the user to pin to `v0.4.x`, run `migrate-workspace`, and upgrade again.
 
 ```bash
 [ -f "$WORKSPACE/.vault-config.json" ] || echo "unsupported pre-1.0 workspace"
@@ -17,22 +14,36 @@ Never guess from the presence of a folder — only `.vault-config.json` marks a 
 
 ---
 
+## Two kinds of note: current state and history
+
+**Every note is either true now, or a record of a day. Never both.** Mixing the two is what turns a workspace unreadable: a thread that narrates when each box was ticked, a log whose `Next:` line was overtaken a week ago, an overview that still names last month's focus.
+
+| Kind | Types | Rule |
+| --- | --- | --- |
+| **Current state** | overview, thread, playbook, decision, convention, research, note, ticket, epic | **Rewrite in place** so the note is true today. No dated history inside — git keeps that. Remove what is finished or wrong; do not annotate it. |
+| **History** | log | **Append-only and backward-looking.** Records what happened that day. Never carries `Next:` or any other forward-looking line. |
+
+**"What's next" lives in exactly one place:** the `## Next up` section of `Overview.md`, each bullet linking the thread or playbook that holds the detail. Nothing else states next work — not logs, not research, not decisions.
+
+---
+
 ## Structured layout
 
-One note per fact, filed by document type, with derived metadata in frontmatter.
+### Root — the contract files only
 
-### Root — readable and referenceable documents only
-
-Nothing else goes in the workspace root.
+Nothing else goes in the workspace root. Plans, roadmaps and guides belong in a folder; a CV summary belongs in the vault's `Contributions/`; a `Home.md` duplicates `Overview.md` and must not exist.
 
 | Note | What it is | Who writes it |
 | --- | --- | --- |
-| `Overview.md` | What the repo is, current focus, trackers | you |
-| `Progress Log.md` | One line per working day, linking to `Log/<date>.md` | you |
-| `Topic Index.md` | Every topic A–Z with the notes under each | **generated — never hand-edit** |
-| `Tickets Index.md` | Every ticket and the notes mentioning it | **generated — never hand-edit** |
-| `Decisions Index.md` | Decisions and conventions grouped by status | **generated — never hand-edit** |
-| `Threads Index.md` | Threads, most open items first | **generated — never hand-edit** |
+| `Overview.md` | What the repo is, current focus, **next up**, trackers | you |
+| `ProgressLog.md` | One line per working day, linking to `Log/<date>.md` | you |
+| `TopicIndex.md` | Every topic A–Z with the notes under each | **generated — never hand-edit** |
+| `TicketsIndex.md` | Every ticket and the notes mentioning it | **generated — never hand-edit** |
+| `DecisionsIndex.md` | Decisions and conventions grouped by status | **generated — never hand-edit** |
+| `ThreadsIndex.md` | Threads and active playbooks, most open items first | **generated — never hand-edit** |
+| `TimeTracking.md` | **Optional** — hours per phase against estimates; created only when the user asks for time tracking | you — see [time-tracking.md](time-tracking.md) |
+
+A workspace may whitelist extra root notes in `.vault-config.json` (`root_notes`), but new workspaces should not need to.
 
 ### Folders — filed by document type
 
@@ -40,58 +51,98 @@ Nothing else goes in the workspace root.
 | --- | --- | --- |
 | `Tickets/` | `ticket` | Work scoped to one tracker ticket; done when it ships |
 | `Epics/` | `epic` | A multi-ticket body of work tracked as such |
-| `Research/` | `research` | Investigations that outlive the ticket: audits, dossiers, upgrade plans, state captures, playbooks |
+| `Playbooks/` | `playbook` | An ordered procedure to follow: phase plans, cutovers, upgrade runbooks, setup guides |
+| `Research/` | `research` | Investigations that outlive the ticket: audits, analyses, specs, reviews, maps |
 | `Notes/` | `note` | Durable cross-ticket knowledge; reusable techniques |
 | `Decisions/` | `decision`, `convention` | One note per decision or standing convention |
-| `Threads/` | `thread` | One note per thread of unfinished work |
+| `Threads/` | `thread` | One note per thread of unfinished work; closed when finished (see "Closing a thread") |
 | `Log/` | `log` | One note per working day: `Log/YYYY-MM-DD.md` |
 
-### Naming notes
+### Choosing the type
 
-- **Decisions and threads** — kebab-case, and **write it as a title, not a sentence**: aim for four
-  to eight words that name the thing decided. `cypress-runs-only-in-docker` is right;
-  `we-decided-that-cypress-should-only-ever-run-inside-docker-because` is not. Some migrated notes
-  are long and truncated mid-word — those are machine-generated artifacts, not the convention to
-  copy.
-- **Tickets** — `<TICKET-ID> <short description>.md`, e.g. `ACME-1701 natural sort ad approvals.md`.
-- **Logs** — `YYYY-MM-DD.md`, nothing else.
-- **Names must be unique across the whole vault.** `[[wikilinks]]` resolve by name, so a second
-  `MISSION.md` or `Index.md` anywhere makes both unreachable.
+- **`playbook` vs `research`** — will someone *follow it step by step*? → `playbook`. Does it *explain or assess* something? → `research`. A plan that weighs options is research; the ordered steps that carry the chosen option out are a playbook.
+- **`playbook` vs `thread`** — a playbook being executed **is** the tracker for that work: tick its steps in place. Do not also open a thread that repeats the same steps — two lists of the same work drift apart and contradict each other.
+- **`ticket` vs `research`** — will this note still be useful after the ticket ships? Yes → `research`.
+- **`note` vs `research`** — did it require investigation to produce? Yes → `research`. Is it a technique or a fact you will cite later? → `note`.
+- **`decision` vs `convention`** — was it decided on a date, in response to something? → `decision`. Is it a standing norm with no decision event? → `convention`.
 
 ### When a ticket earns its own note
 
-Not every ticket needs one. A ticket gets a note when there is something to say that outlives a
-checkbox — findings, a plan, deferred gaps, review comments. A ticket that is just a unit of work
-lives as a `- [ ]` item inside the relevant thread note. Follow what the workspace already does: if
-similar tickets are thread items there, keep yours a thread item.
+Not every ticket needs one. A ticket gets a note when there is something to say that outlives a checkbox — findings, a plan, deferred gaps, review comments. A ticket that is just a unit of work lives as a `- [ ]` item inside the relevant thread or playbook. Follow what the workspace already does.
 
-Choosing between the near-synonyms:
+---
 
-- **`ticket` vs `research`** — will this note still be useful after the ticket ships? Yes → `research`.
-- **`note` vs `research`** — did it require investigation to produce? Yes → `research`. Is it a
-  technique or a fact you will cite later? → `note`.
-- **`decision` vs `convention`** — was it decided on a date, in response to something? → `decision`.
-  Is it a standing norm with no decision event? → `convention`.
+## Naming notes
+
+**Every note in the vault is named in PascalCase** — workspace notes, the structural files, general notes outside `Projects/`, and the workspace folders themselves. The only exceptions are log dates and the ticket ID at the front of a ticket note.
+
+| Type | Pattern | Example |
+| --- | --- | --- |
+| decision, convention | a **claim**, 4–8 words | `FrameworkIsFastapiOverDjango` |
+| thread | a **noun phrase**, 2–5 words | `VaultPushReliability` |
+| playbook | `<Subject>Playbook` | `DataModelAndCrudPlaybook` |
+| research | `<Subject><Kind>`, Kind ∈ `Audit · Analysis · Plan · Spec · Review · Map · Reference` | `AdminApiPermissionsAudit` |
+| note | a noun phrase | `PostgresAdvisoryLocks` |
+| ticket | `<TICKET-ID>-<Subject>` | `ACME-1701-NaturalSortAdApprovals` |
+| log | `YYYY-MM-DD` | `2026-08-19` |
+| structural | fixed | `Overview`, `ProgressLog`, `TopicIndex`, `TicketsIndex`, `DecisionsIndex`, `ThreadsIndex`, `TimeTracking` |
+| vault root | fixed | `Projects/WorkspaceIndex`, `TasksArchive` |
+| workspace folder | the repo's name | `Projects/HomeBudgeter/` (and `Contributions/HomeBudgeter.md`) |
+
+- **Acronyms are words.** `AdminApiAudit`, `CiPipelineSpec`, `SqlInjectionAudit` — never `AdminAPIAudit`, which hides the word boundary.
+- **No spaces, hyphens, underscores or em dashes** — except the hyphen inside a ticket ID and the one after it.
+- **Numbers stay digits:** `Laravel13UpgradePlan`, `Phase2IngestionPlaybook`.
+- **No dates in names** except logs. A review of a playbook is `IngestionPlaybookReview`, not `Phase 2 Playbook Review 2026-10-02`; the date goes in frontmatter.
+- **Ticket IDs prefix ticket notes only.** A research note about a ticket carries the ID in `tickets:`, not in its name.
+- **The subject is specific enough to be vault-unique.** `Phase1Playbook` collides with every other project's phase 1; name what the phase does.
+- **Names must be unique across the whole vault.** `[[wikilinks]]` resolve by name, so a second `Index.md` anywhere makes both unreachable.
+- **The `# Heading` is the readable form**, in sentence case with normal spacing and acronyms: `FrameworkIsFastapiOverDjango.md` has the heading `# Framework is FastAPI over Django`. The generated indexes display the heading, so lists stay readable.
+
+---
+
+## Writing style
+
+Every note is written for **someone scanning for one fact**, not someone reading start to finish.
+
+- **The first line under any heading is the answer.** Setup and reasoning come after, if at all.
+- **Bullets and `**Key:** value` pairs over paragraphs.** A paragraph is at most three short sentences.
+- **Outcome, not process.** Write what is true or what was decided — never "first I tried X, then Y". Dead ends earn one bullet in a log's `Learned`, not a narrative.
+- **One fact, one place.** Link the note that owns a fact instead of restating it. Link the **specific** note — `[[FrameworkIsFastapiOverDjango]]`, never `[[DecisionsIndex|the decisions]]`.
+- **No stale pointers.** When something is finished, superseded or deleted, remove references to it from current-state notes rather than annotating them ("~~old plan~~", "now done", "see update below").
+- **No commit SHAs, step numbers or session narration** in current-state notes. Link a PR if the provenance matters.
+- **One continuous line per block** — no hard line breaks inside a paragraph, bullet or blockquote. Obsidian soft-wraps.
+- **Bold only the load-bearing claim.** If everything is bold, nothing is.
+
+### Length budgets
+
+Body words, excluding frontmatter and fenced code. The `vault-maintain` lint flags notes over budget; the fix is to cut, link out, or split — never to raise the budget for one note.
+
+| Type | Budget |
+| --- | --- |
+| log | 150 |
+| decision, convention | 150 |
+| overview | 200 |
+| ticket | 250 |
+| thread | 300 |
+| playbook, research, note, epic | no budget — but research must open with a `## TL;DR` and a playbook must follow its template |
+
+Templates for every type are in [templates.md](templates.md).
 
 ---
 
 ## Linking between notes
 
-`[[name]]` is resolved by Obsidian searching the vault, so how you write a link depends on whether
-the name is unique.
+`[[name]]` is resolved by Obsidian searching the vault, so how you write a link depends on whether the name is unique.
 
 | Target | Write | Why |
 | --- | --- | --- |
-| A note in `Decisions/`, `Threads/`, `Log/`, `Notes/`, `Research/` | `[[kebab-case-name]]` | One note per fact means names are unique; a bare link survives a workspace rename |
-| `Overview`, `Progress Log`, or any generated index | `[[Workspace/Overview]]` | These exist once per workspace by design, so the bare name is ambiguous vault-wide |
+| A note in any type folder | `[[note-name]]` | One note per fact means names are unique; a bare link survives a workspace rename |
+| `Overview`, `ProgressLog`, or any generated index | `[[Workspace/Overview]]` | These exist once per workspace by design, so the bare name is ambiguous vault-wide |
 | The current workspace's own structural file, linked from inside it | `[[Overview]]` is fine | Obsidian resolves same-folder first |
 
 Obsidian has **no `../` syntax** for wikilinks — a vault-relative path is the only disambiguator.
 
-**The failure this prevents.** A bare `[[Decisions]]` resolved against the whole vault binds to
-whichever workspace matches first. It resolves *successfully*, so "do the links work?" reports
-healthy while the link points at a different project's notes. Silent cross-project links are worse
-than broken ones: a broken link is noticed, a wrong one is trusted.
+**The failure this prevents.** A bare `[[Decisions]]` resolved against the whole vault binds to whichever workspace matches first. It resolves *successfully*, so "do the links work?" reports healthy while the link points at a different project's notes. Silent cross-project links are worse than broken ones: a broken link is noticed, a wrong one is trusted.
 
 ## Frontmatter contract
 
@@ -102,6 +153,7 @@ than broken ones: a broken link is noticed, a wrong one is trusted.
 | `type` | yes | one of the `type:` values above | Must match the folder |
 | `status` | yes, except `log` | see the status table | |
 | `decided` | decisions | `YYYY-MM-DD` | The date the decision was made |
+| `closed` | closed threads | `YYYY-MM-DD` | The date the thread was closed |
 | `date` | logs | `YYYY-MM-DD` | Must equal the filename |
 | `tickets` | when relevant | `[ACME-1234, ACME-5678]` | Every ticket the note concerns |
 | `superseded_by` | superseded decisions | the superseding note's name | See "Superseding" below |
@@ -109,8 +161,7 @@ than broken ones: a broken link is noticed, a wrong one is trusted.
 
 ### Fields written FOR you
 
-**Do not write these by hand.** The `vault-maintain` SessionEnd hook derives them from content and
-rewrites them on every run, so a hand-written value is overwritten.
+**Do not write these by hand.** The `vault-maintain` SessionEnd hook derives them from content and rewrites them on every run, so a hand-written value is overwritten.
 
 | Field | Derived from |
 | --- | --- |
@@ -118,51 +169,69 @@ rewrites them on every run, so a hand-written value is overwritten.
 | `topics` | matching the note's text against the topic vocabulary |
 | `tags` | `project` + `type` + one `topic/<name>` per topic |
 
-You may write `topics:` explicitly when the derived guess would be wrong — a hand-written list is
-respected and not overwritten. Everything else in that table is regenerated regardless.
+You may write `topics:` explicitly when the derived guess would be wrong — a hand-written list is respected and not overwritten. Everything else in that table is regenerated regardless.
 
 ### Fields you must NOT write — deprecated counts
 
-Some notes migrated before this contract existed carry cached counts: `open_count`, `done_count`,
-`days`, `entries`, `decisions`, `threads_open`, `open_items`, `log_days`.
-
-**Nothing maintains them.** They were correct on the day of the migration and drift from then on —
-tick one checkbox and `open_count` is a lie.
-
-- **Never add one to a note.** Count by reading the note.
-- **Never update one.** Updating implies it can be trusted, which it cannot.
-- Leave existing ones alone; they will be removed. Treat them as noise, never as fact.
-
-If you need a count, derive it at the moment you need it.
+Some notes migrated before this contract existed carry cached counts: `open_count`, `done_count`, `days`, `entries`, `decisions`, `threads_open`, `open_items`, `log_days`. **Nothing maintains them** — tick one checkbox and `open_count` is a lie. Never add or update one; remove them when you rewrite a note. If you need a count, derive it at the moment you need it.
 
 ### Anything else you find
 
-The tables above are the complete contract. A field outside them is either a deprecated count or a
-leftover, and neither is a reason to add more. Do not invent fields, and do not copy an unfamiliar
-one forward because a neighbouring note has it.
+The tables above are the complete contract. Do not invent fields, and do not copy an unfamiliar one forward because a neighbouring note has it.
 
 ### Status values
 
-These are the only legal values. A value outside this list lands the note in no index and matches no
-query.
+These are the only legal values. A value outside this list lands the note in no index and matches no query.
 
 | `status` | Use on | Means |
 | --- | --- | --- |
-| `active` | decision, convention, thread | In force / being worked |
+| `active` | decision, convention, thread, playbook | In force / being worked |
 | `superseded` | decision | Replaced — no longer true |
 | `open` | thread | Has unfinished items, not currently being worked |
-| `done` | thread | Everything finished |
+| `done` | thread, playbook | Everything finished |
 | `shipped` | ticket | Merged and released — the terminal state of a healthy ticket note, which is kept, not deleted |
-| `reference` | note, research | Durable material, no lifecycle |
+| `reference` | note, research, playbook | Durable material, no lifecycle (a playbook you re-run, like a setup guide) |
 | `paused` | overview, thread | Deliberately stopped |
 | `trial` | meta | An experiment being evaluated, not yet adopted |
 
 ---
 
+## Closing a thread
+
+A thread exists for unfinished work, so a finished thread must not keep reading like one. **Close it** when its last item is ticked, or when the user says it is done or abandoned:
+
+1. **Move out what lasts** — each to the note type that owns it:
+
+   | Found in the thread | Goes to |
+   | --- | --- |
+   | A decision made along the way | A note in `Decisions/` (if one does not already exist) |
+   | A technique, gotcha or fact worth citing later | `Notes/` — or `Research/` if it took investigation |
+   | Items still open but no longer part of this thread | Another open thread, or `Overview.md`'s `## Next up` — **ask** before dropping one |
+   | What the thread achieved | One clause in today's log `Did` |
+
+2. **Reduce the thread to a closing stub.** Replace the body with the template below and set `status: done` and `closed: YYYY-MM-DD`. The item lists go; git keeps them. The stub stays so links from old logs still resolve.
+
+   ```markdown
+   # <Thread name>
+
+   **Goal:** <the original one-line goal>
+
+   **Outcome:** <one line — shipped, or abandoned and why>
+
+   **Moved to:** [[<DecisionNote>]], [[<NoteOrResearch>]], [[<OtherThread>]]
+   ```
+
+3. **Remove it from current state.** Take it out of `## Next up`, and repoint or remove links to it from the Overview and from open threads and playbooks.
+
+The lint reports an `unclosed-thread` for a `done` thread that still holds its item lists, and for an open thread whose items are all ticked.
+
+A **playbook** is not closed this way: a `done` playbook keeps its steps, because the steps are the record of how the work was carried out.
+
+---
+
 ## Superseding a decision
 
-This is the point of the structured layout. When a new decision replaces an old one, **edit the old
-note** — do not simply add a newer one, or both will read as current.
+When a new decision replaces an old one, **edit the old note** — do not simply add a newer one, or both will read as current.
 
 On the old note:
 
@@ -174,50 +243,35 @@ superseded_by: <name of the new note>
 and immediately under its heading:
 
 ```markdown
-> [!warning] Superseded — this no longer holds
-> Replaced by [[<new note>]].
->
+> [!warning] Superseded — replaced by [[<new note>]]
 > <One sentence on what changed and why.>
 ```
 
 On the new note: `supersedes: <name of the old note>`, and a matching `> [!note]` callout.
 
+Then **repoint every current-state note** that linked the old decision to the new one. A superseded decision is linked only from its successor and from logs.
+
 Only record a supersession you can evidence. A wrong one is worse than none.
 
 ### When the superseded note does not exist
 
-Common, and easy to get wrong. The user says "this replaces our old decision that X", but no note
-records X — the old decision was never written down, or only
-appears in a log entry.
-
-**Do not fabricate a note to supersede, and do not silently drop the claim.** Both lose information.
-Instead:
+The user says "this replaces our old decision that X", but no note records X. **Do not fabricate a note to supersede, and do not silently drop the claim.**
 
 1. Search before concluding it is missing — `Decisions/`, then the logs, then the threads.
-2. If it genuinely is not there, write the new decision **without** `supersedes:`, and state the
-   replacement in its body: *"This replaces the previous practice that X, which was never recorded
-   as a decision note."*
-3. Tell the user in one line that you could not find a note for the superseded decision, so the link
-   is prose rather than frontmatter.
-
-The frontmatter link is for note-to-note supersession. An unwritten practice has no note, and saying
-so plainly is more honest than inventing one.
+2. If it genuinely is not there, write the new decision **without** `supersedes:`, and state the replacement in its body: *"Replaces the unrecorded practice that X."*
+3. Tell the user in one line that the link is prose rather than frontmatter.
 
 ---
 
 ## The two-altitude log
 
-`Progress Log.md` in the root is an **index**: one line per working day, newest first.
+`ProgressLog.md` in the root is an **index**: one line per working day, newest first.
 
 ```markdown
-- **[[2026-08-19]]** — ACME-1656: slim pagination + billing joins landed · ACME-1656
+- **[[2026-08-19]]** — ACME-1656 billing joins landed
 ```
 
-The detail lives in `Log/2026-08-19.md`, which holds the full entry — what changed, why, how it was
-verified, what is next.
-
-When logging a day that already has a note, **append to that note** rather than creating a second
-one, and update the index line only if the day's headline has changed.
+The detail lives in `Log/2026-08-19.md`: **one** `Did` / `Decided` / `Learned` block for the whole day. A second close-out on the same day **merges into those sections** — it never adds a second block, a `###` sub-entry, or a correction of an earlier line. If something said earlier that day is now wrong, fix the line.
 
 ---
 
@@ -226,10 +280,13 @@ one, and update the index line only if the day's headline has changed.
 The `vault-maintain` SessionEnd hook runs before the vault is committed. It:
 
 1. Fills in `project`, `topics` and `tags` on any note missing them.
-2. Regenerates `Topic Index.md` and `Tickets Index.md`.
+2. Regenerates `TopicIndex.md`, `TicketsIndex.md`, `ThreadsIndex.md` and `DecisionsIndex.md`.
 
 It never deletes a file, never moves a file, and never edits a note body.
 
-So you can write a note with only `type`, `status` and a body, and the topics and indexes take care
-of themselves. What you must get right is `type`, `status`, the folder, and the supersession edits —
-the hook cannot infer those.
+It also has a **lint mode** that reports, without fixing, every note that breaks this contract: over-budget notes, stray root files, pre-2.0 names, threads that are finished but not closed, `Next:` lines or stacked blocks in logs, links to superseded decisions or finished threads from current-state notes, broken links, links to an index where a specific note belongs, names that are not PascalCase (vault-wide, workspace folders included), missing required sections, and hard-wrapped prose. `condense-vault` runs it and fixes what it finds.
+
+```bash
+# The script ships with the plugin: <this skill's base directory>/../../hooks/vault_maintain.py
+python3 "<plugin root>/hooks/vault_maintain.py" --lint "$OBSIDIAN_VAULT"
+```

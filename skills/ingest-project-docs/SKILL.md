@@ -38,7 +38,7 @@ Ingest progress:
 
 **Step 1 — Locate/scaffold the workspace.**
 Use `manage-project-workspaces`: find the repo in
-`$OBSIDIAN_VAULT/Projects/_index.md`, or scaffold `Projects/<repo>/` and add a row.
+`$OBSIDIAN_VAULT/Projects/WorkspaceIndex.md`, or scaffold `Projects/<Repo>/` (PascalCase) and add a row.
 
 **Step 2 — Detect the forge.**
 Inspect `git remote -v`. A `github.com` remote → use `gh`. A `gitlab.com` or self-hosted GitLab
@@ -67,8 +67,11 @@ for the full contract.
 - **Threads** — one note per thread of work in `Threads/` (`type: thread`, `status: open`), its open
   issues as `- [ ]` items inside. Group related issues into one thread rather than making a note per
   issue.
+- **Playbooks** — a runbook, setup or upgrade guide found in the repo becomes a note in `Playbooks/`
+  (`type: playbook`, `status: reference`), summarised to the playbook template with a link back.
+- **Next up** — seed `Overview.md`'s `## Next up` with the milestone or thread to pick up first.
 - **The day's log** — write `Log/YYYY-MM-DD.md` with the ingestion summary, then add its one-line
-  entry to the root `Progress Log.md`.
+  entry to the root `ProgressLog.md`.
 - **Decisions** — one note per decision in `Decisions/` (`type: decision`, `status: active`,
   `decided:`), not a stacked `Decisions.md`.
 - Write only `type`, `status` and the dates. The `vault-maintain` hook derives `project`, `topics`
@@ -85,7 +88,7 @@ PRs, README + 4 docs, 1 TODO.md"), and list any source that failed (auth, missin
 Two rules govern all markdown written to the vault:
 
 - **No hard line breaks inside a text block.** Each paragraph or bullet is one source line, however long; blank lines separate paragraphs. Obsidian soft-wraps to the pane width — never wrap prose to a column width.
-- **ADHD-friendly prose** — clarity, not brevity: short one-idea sentences, the point stated first, visible structure (headings, bullets, **bold** key terms), and explanations spelled out rather than compressed.
+- **Scan-first prose.** Write for someone scanning for one fact: the answer first, bullets and `**Key:** value` pairs over paragraphs (at most three short sentences each), outcome rather than process, and a link to the note that owns a fact rather than a restatement of it. Full rules: [capture-notes/reference/conventions.md](../capture-notes/reference/conventions.md).
 
 ## Vault git sync
 

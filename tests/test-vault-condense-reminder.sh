@@ -144,4 +144,34 @@ else
   nope 'overdue stamp and a stale file: prompts' "got [$HOOK_OUT]"
 fi
 
+section 'Format findings are work for the run too'
+
+# The reconcile step fixes notes that break the workspace formats whatever their age, so a
+# vault with nothing stale but a broken note still has work for the run.
+
+v="$(stamp_vault gate_lint "$(days_ago 90)" --fresh)"
+mkdir -p "$v/Projects/Demo/Log"
+printf '{"project":"demo","topics":{}}' > "$v/Projects/Demo/.vault-config.json"
+printf -- '---\ntype: log\ndate: 2026-10-01\n---\n\n# 2026-10-01\n\n- **Did:** x\n- **Next:** y\n' \
+  > "$v/Projects/Demo/Log/2026-10-01.md"
+run_hook vault-condense-reminder.sh "$v"
+assert_eq 0 "$HOOK_RC" 'overdue stamp, lint finding: exit 0'
+if prompted; then
+  ok 'overdue stamp, nothing stale, a format finding: prompts'
+else
+  nope 'overdue stamp, nothing stale, a format finding: prompts' "got [$HOOK_OUT]"
+fi
+assert_contains "$HOOK_OUT" 'format finding' 'the prompt names the format findings'
+
+v="$(stamp_vault lint_fresh "$(days_ago 1)")"
+mkdir -p "$v/Projects/Demo/Log"
+printf '{"project":"demo","topics":{}}' > "$v/Projects/Demo/.vault-config.json"
+printf -- '---\ntype: log\n---\n\n- **Next:** y\n' > "$v/Projects/Demo/Log/2026-10-01.md"
+run_hook vault-condense-reminder.sh "$v"
+if prompted; then
+  nope 'format findings alone do not override a recent stamp' "got [$HOOK_OUT]"
+else
+  ok 'format findings alone do not override a recent stamp'
+fi
+
 finish

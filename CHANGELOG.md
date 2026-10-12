@@ -14,6 +14,32 @@ are minor.
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-10-12
+
+### Breaking
+
+- **Every note in the vault is named in PascalCase.** This covers workspace notes (`FrameworkIsFastapiOverDjango`, `VaultPushReliability`, `AdminApiPermissionsAudit`, `DataModelAndCrudPlaybook`, `ACME-1701-NaturalSortAdApprovals`), the structural files (`ProgressLog`, `TopicIndex`, `TicketsIndex`, `DecisionsIndex`, `ThreadsIndex`), the vault-level notes (`Projects/WorkspaceIndex`, `TasksArchive`, `WorkPlanning`), general notes, and the workspace folders themselves (`Projects/HomeBudgeter/`). Acronyms are written as words; logs stay `YYYY-MM-DD`; the `# Heading` inside each note is the readable form. The hook now generates the indexes under their new names. **Migrating:** run `condense-vault`. The lint reports every pre-2.0 name (`legacy-name`, `bad-name`), and the reconcile step renames notes, rewrites their links, and removes the stale generated indexes. Until then the skills read the old names.
+
+### Changed
+
+- **Note formats are now specified per type, and the writing style is scan-first.** The old style rule asked for "clarity, not brevity … explanations spelled out", and the workspaces it produced were wordy, inconsistently titled and self-contradicting: logs grew into 5,000-word session diaries, threads into changelogs. Every workspace note is now either **current state** (overview, thread, playbook, decision, research, note, ticket — rewritten in place so it is true today) or **history** (a day's log — one block, merged on a second close-out, never forward-looking). Each type has a template, a naming pattern and, for the short types, a word budget.
+- **Next work lives in one place: the Overview's `## Next up`.** Logs no longer carry `Next:` lines, so stale next-work pointers stop accumulating. "What's next" reads `## Next up` first and falls back to the newest log's `Next:` in a workspace that predates this.
+- **Editing a note brings it into its template**, and removing or superseding something means fixing the current-state notes that point at it. This replaces "a logging pass is not a cleanup pass".
+- **`condense-vault` reconciles before it condenses.** A new first step, run every time and regardless of age, works through the lint findings: strips `Next:` lines from logs (moving anything still open into `## Next up`), merges stacked same-day log blocks, repoints or removes links to superseded decisions, finished threads and deleted notes, renames off-pattern notes, trims over-budget ones and moves stray root files into place.
+- **The condense reminder also fires for format findings**, not only for content older than three months.
+- **`ingest-project-docs` writes the structured layout.** Its mapping table still pointed at the retired `Open Threads.md` and `Decisions.md` and logged a `Next:` line.
+
+### Added
+
+- **Closing a thread.** A finished or abandoned thread has its decisions, durable knowledge and leftover items moved to their own notes. It is then reduced to a stub (`status: done`, `closed:`, Goal / Outcome / Moved to), which stays so old log links still resolve. The new `unclosed-thread` lint finds threads that are finished but not closed.
+- **Optional time tracking.** `TimeTracking.md` is created only when the user asks for it. It holds a phases table (Phase, Status, Estimate, Actual, Variance, Sittings, Dates, Links) and a weekly-hours table, with every other detail linked out. Hours come from the new `scripts/session_hours.py`, which turns Claude Code transcripts into active hours using the method Home-Budgeter developed: only typed messages count, a gap over 15 minutes is a break, and a sitting books under its start date. Unlike that method, it pools concurrent sessions so they are not double-counted. Transcripts expire after 30 days by default, so the table is updated incrementally at each close-out from a `tracked_through:` date. The method is documented in `reference/time-tracking.md`.
+- **Playbooks.** A `Playbooks/` folder and `type: playbook` for ordered procedures — phase plans, cutovers, upgrade runbooks, setup guides — with a Goal / Done when / Before you start / Steps / Verify / Gotchas / Out of scope template. An active playbook is its own tracker and is listed in the Threads Index.
+- **`vault_maintain.py --lint`** — reports, without writing, every workspace note that breaks the contract: `over-budget`, `root-stray`, `legacy-name`, `unclosed-thread`, `log-next`, `log-stacked`, `stale-link`, `broken-link`, `index-link`, `bad-name`, `dup-name`, `missing-section`, `hard-wrap`. `--lint --count` prints just the number.
+
+### Fixed
+
+- **A `folders` override in `.vault-config.json` no longer hides folders added to the contract later.** The override is merged over the defaults instead of replacing them.
+
 ## [1.1.0] — 2026-09-10
 
 ### Fixed

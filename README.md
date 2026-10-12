@@ -11,7 +11,7 @@ home for your work — notes, per-repo workspaces, and imported project context.
 | **manage-project-workspaces** | Maintains a per-repo workspace (`Projects/<repo>/`) as the source of truth for "what's next" / "where did we leave off", checked before any issue tracker. One note per fact, filed by type into `Log/`, `Decisions/`, `Threads/`, `Tickets/`, `Research/` and `Notes/`, with generated indexes on top. |
 | **ingest-project-docs** | Bootstraps a repo's workspace from context that already exists: open issues/milestones/PRs (GitHub `gh` / GitLab `glab`), in-repo docs (README, `docs/`, `CLAUDE.md`, `.claude/`), and scratch files. |
 | **summarize-contribution** | Writes or updates a career-facing summary of your contribution to a project, one file per project in `Contributions/`. Evidence comes from git history (identity discovery, authored vs. shipped vs. integrated), the project workspace, and any tracker you have CLI access to. Structured around the project's major efforts, with liftable text for CV, LinkedIn, 360 reviews, and blog topics. Updates integrate into the existing text rather than appending. |
-| **condense-vault** | Weekly cleanup: condenses stale content (untouched >3 months) down to bullet points. Outside the project workspaces — in `Archived/`, `Inbox/`, `Resources/` and loose root notes — it also deletes records of finished work. **Project workspaces are condensed but never deleted from**; a workspace note records why work happened, which outlives the work itself. Deletes only when the vault is a git repository, since git history is what makes a deletion recoverable; an unversioned vault gets condensed instead. |
+| **condense-vault** | Weekly cleanup: first **reconciles** project workspaces against their note formats whatever their age — strips stale "Next" pointers and stacked entries from logs, repoints or removes links to superseded and deleted notes, renames off-pattern notes, trims over-length ones. Then condenses stale content (untouched >3 months) down to bullet points. Outside the project workspaces — in `Archived/`, `Inbox/`, `Resources/` and loose root notes — it also deletes records of finished work. **Project workspaces are condensed but never deleted from**; a workspace note records why work happened, which outlives the work itself. Deletes only when the vault is a git repository, since git history is what makes a deletion recoverable; an unversioned vault gets condensed instead. |
 
 ## Prerequisites
 
@@ -138,13 +138,36 @@ The vault links *out* to Jira/GitHub/GitLab; it never pushes changes back to the
 
 ### Writing style
 
-Everything written to the vault follows two rules. First, **no hard line breaks inside a text block** — each paragraph or bullet is one source line, because Obsidian soft-wraps and hard-wrapped prose reads badly there. Second, **ADHD-friendly prose** — clarity, not brevity: short one-idea sentences, the point stated first, visible structure (headings, bullets, bold key terms), and explanations spelled out rather than compressed. The `condense-vault` skill also reformats hard-wrapped files it touches to this style.
+Everything written to the vault is **scan-first**: written for someone looking for one fact, not reading start to finish.
+
+- **Answer first** — the first line under any heading is the point.
+- **Bullets and `Key: value` pairs over paragraphs**; outcome, not process.
+- **One fact, one place** — link the specific note that owns a fact instead of restating it.
+- **No stale pointers** — references to finished, superseded or deleted things are removed, not annotated.
+- **One continuous line per block** — Obsidian soft-wraps; hard-wrapped prose reads badly there.
+
+### Note formats
+
+Every workspace note is either **current state** (rewritten in place so it is true today) or **history** (a day's log, append-only and never forward-looking). Next work is stated in exactly one place: the `## Next up` section of the workspace's `Overview.md`.
+
+Each type has a template, a naming pattern and — for the short types — a word budget: logs and decisions 150, overview 200, tickets 250, threads 300. Research opens with a TL;DR; playbooks follow a fixed Goal / Done when / Steps / Verify / Gotchas shape. The full contract is in [`structure.md`](skills/manage-project-workspaces/reference/structure.md) and the templates in [`templates.md`](skills/manage-project-workspaces/reference/templates.md).
+
+**Every note is named in PascalCase**, vault-wide: `FrameworkIsFastapiOverDjango`, `AdminApiPermissionsAudit`, `ACME-1701-NaturalSortAdApprovals`, `ProgressLog`, and workspace folders like `Projects/HomeBudgeter/`. Acronyms are written as words, logs stay `YYYY-MM-DD`, and the `# Heading` inside each note is the readable form.
+
+**A finished thread is closed, not left behind.** Its decisions, knowledge and leftover items move to their own notes, and the thread shrinks to a Goal / Outcome / Moved-to stub.
+
+**Time tracking is optional, per project, and only on request.** `TimeTracking.md` is a phases table (estimate vs actual hours, variance, sittings, dates, links) plus a weekly-hours table. `scripts/session_hours.py` measures active hours from Claude Code transcripts; see [`time-tracking.md`](skills/manage-project-workspaces/reference/time-tracking.md).
+
+`hooks/vault_maintain.py --lint <vault>` reports every note that breaks the contract, without changing anything; `condense-vault` works through the findings.
 
 ### Workspace layout
 
-A project workspace is **one note per fact**, filed by document type into `Log/`, `Decisions/`, `Threads/`, `Tickets/`, `Research/` and `Notes/`, with `type:`/`status:` frontmatter and generated Topic, Tickets, Decisions and Threads indexes on top. A `.vault-config.json` in the workspace folder marks it as a workspace.
+A project workspace is **one note per fact**, filed by document type into `Log/`, `Decisions/`, `Threads/`, `Playbooks/`, `Tickets/`, `Research/` and `Notes/`, with an optional `TimeTracking.md`, with `type:`/`status:` frontmatter and generated Topic, Tickets, Decisions and Threads indexes on top. A `.vault-config.json` in the workspace folder marks it as a workspace.
 
 The folder skeleton is **fixed** — every workspace uses the same folder names and document types, so the skills can rely on them. What varies per project is the vocabulary in `.vault-config.json`: the `topics` map and the index tuning (`min_hits`, `title_weight`, `root_notes`).
+
+> [!note]
+> **2.0 renamed every note to PascalCase.** A 1.x vault keeps working, because the skills still read the old names. Run `condense-vault` once to rename notes, folders and links, and to remove the stale generated `Topic Index.md`-style files.
 
 > [!warning]
 > **1.0 dropped the old flat layout.** Workspaces created before 1.0 — stacked `Progress Log.md`, `Decisions.md` and `Open Threads.md` — are no longer read or written. If you have one, pin the plugin to `v0.4.x`, run its `migrate-workspace` skill to convert it, then upgrade again. This version will tell you rather than guessing, and will never scaffold a second workspace alongside one it cannot read.
@@ -166,7 +189,7 @@ touch vault git — they just write files.
 
 **What gets committed, and what does not.** The push hook does *not* `git add -A`. It commits only
 paths the plugin's conventions own — `Projects/`, `Resources/`, `Contributions/`, and the root
-`Home.md`, `Tasks Archive.md`, `Work Planning.md` — so a stray file elsewhere in the vault is never
+`Home.md`, `TasksArchive.md`, `WorkPlanning.md` — so a stray file elsewhere in the vault is never
 published on your behalf. Two further refusals, each reported on stdout rather than done silently:
 
 - **Secret-shaped filenames** (`.env`, `*.pem`, `*.key`, `id_rsa`, `.npmrc`, and similar) are never
@@ -189,11 +212,11 @@ the local state and any commit in place rather than erroring.
 The one exception is `condense-vault`, which makes its own commit: that run deletes files in bulk, so
 it gets a dedicated, recoverable commit rather than being folded into the generic session commit.
 
-### The Tasks Archive
+### The TasksArchive
 
-`Tasks Archive.md` at the vault root is a human-friendly, day-by-day summary — **one line per working
+`TasksArchive.md` at the vault root is a human-friendly, day-by-day summary — **one line per working
 day**, newest month first, with a per-month list of the projects touched. It is the quick-reference to
-scan before a personal update meeting, months after the fact; the per-repo `Progress Log.md` files
+scan before a personal update meeting, months after the fact; the per-repo `ProgressLog.md` files
 remain the detailed record beneath it.
 
 Rows are **terse by design** — two columns (`Date` and `Tasks`), and one short clause per project
@@ -208,7 +231,7 @@ close.
 ### Keeping the vault current across a session
 
 The plugin bundles hooks for the vault's git sync, its start-of-session health checks, and its index
-maintenance. No hook writes *progress* — Progress Log entries, decisions and threads are written only
+maintenance. No hook writes *progress* — ProgressLog entries, decisions and threads are written only
 when you ask or say to close out the session (see "When progress gets logged" below). One hook does
 write to the vault, though: the `SessionEnd` maintenance hook rewrites derived frontmatter and
 regenerates index notes, described below.
@@ -224,8 +247,9 @@ regenerates index notes, described below.
   pasted data dumps into attachment files, or move genuinely binary files to Git LFS.
 - **On session start, condense reminder** (`SessionStart`) — the `condense-vault` skill stamps
   `.condense-last-run` in the vault on every run; when that stamp is missing or more than 7 days
-  old, this hook reminds Claude to offer the weekly condense run (it only offers — the run never
-  starts unprompted).
+  old **and** there is work for it — something stale to condense, or workspace notes that break
+  their format — this hook reminds Claude to offer the weekly condense run (it only offers — the
+  run never starts unprompted).
 - **On session end, index maintenance** (`SessionEnd`) — for each workspace that opts in with a
   `.vault-config.json`, this hook fills in derived frontmatter (`project`, `topics`, `tags`) and
   regenerates the Topic, Tickets, Threads and Decisions indexes. It runs *before* the push, so
@@ -248,8 +272,9 @@ regenerates index notes, described below.
 - **You ask** — "log progress", "record this decision", "update the vault".
 - **You close out the session** — "close out the session", "wrap up", "we're done for the day".
 
-On either trigger it does the whole write in one pass: the Progress Log entry, any Open Threads and
-Decisions updates, and the day's row in `Tasks Archive.md`. Nothing is written mid-session while you
+On either trigger it does the whole write in one pass: the day's log (merged into one block if the
+day already has one), the Overview's `## Next up`, any thread, playbook and decision updates, and the
+day's row in `TasksArchive.md`. Nothing is written mid-session while you
 work, and no hook nags for it — earlier versions reminded on every `Stop` (i.e. every turn), which
 interrupted the coding work it was meant to record. Reading the vault is unrestricted.
 

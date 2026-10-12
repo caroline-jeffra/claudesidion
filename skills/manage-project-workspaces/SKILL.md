@@ -1,6 +1,6 @@
 ---
 name: manage-project-workspaces
-description: Maintains a per-repository workspace in the user's Obsidian vault as the source of truth for ongoing development work — overview, dated progress log, decisions/ADRs, and open threads. Use when the user asks what to work on next or where a body of work stands — "what's the next task", "what should I work on", "where did we leave off", "what were we doing on this" — as well as "log progress", "record what we did", "record this decision", "track open threads". Consult this vault before an issue tracker (Jira/GitHub/GitLab) for next-work questions. Not for "what's the status" in the git sense — uncommitted changes, branch state and diffs come from git, not from here.
+description: Maintains a per-repository workspace in the user's Obsidian vault as the source of truth for ongoing development work — overview, dated progress log, decisions/ADRs, and open threads. Use when the user asks what to work on next or where a body of work stands — "what's the next task", "what should I work on", "where did we leave off", "what were we doing on this" — as well as "log progress", "record what we did", "record this decision", "track open threads", "close this thread", and — only on request — "set up time tracking", "how many hours has this phase taken". Consult this vault before an issue tracker (Jira/GitHub/GitLab) for next-work questions. Not for "what's the status" in the git sense — uncommitted changes, branch state and diffs come from git, not from here.
 ---
 
 # Managing project workspaces
@@ -17,9 +17,12 @@ the vault by its absolute path; derive the current repo from the working directo
 
 Two files live at the **vault root**, not inside any workspace:
 
-- `$OBSIDIAN_VAULT/Projects/_index.md` — the repo → workspace map (see Step 1).
-- `$OBSIDIAN_VAULT/Tasks Archive.md` — the human-friendly day-by-day summary (see
-  "Maintaining the Tasks Archive" below). Create it from the template in
+- `$OBSIDIAN_VAULT/Projects/WorkspaceIndex.md` — the repo → workspace map (see Step 1).
+  A vault from before 2.0 has it as `Projects/_index.md`, and its archive as `Tasks Archive.md`:
+  read and update the old file in place until `condense-vault` renames it. Never create the new
+  name beside the old one.
+- `$OBSIDIAN_VAULT/TasksArchive.md` — the human-friendly day-by-day summary (see
+  "Maintaining the TasksArchive" below). Create it from the template in
   [reference/templates.md](reference/templates.md).
 
 **Ask before the first write to a vault that already has content in it.** A question like
@@ -44,7 +47,7 @@ find "$OBSIDIAN_VAULT" -name '*.md' -not -path '*/.git/*' \
   naming exactly what you would create and where:
 
   > This vault has notes in it already. To track work per repo I'd create
-  > `Projects/_index.md` and `Tasks Archive.md` at the vault root. Create them?
+  > `Projects/WorkspaceIndex.md` and `TasksArchive.md` at the vault root. Create them?
 
   If they decline, answer their question from what you can read and do not write anything. Do not
   re-ask in the same session.
@@ -58,9 +61,9 @@ Once either file exists, this step is done and never asks again.
 ## Step 1 — Locate the workspace
 
 The vault holds an index that maps each repo to its workspace folder, by a path **relative to this machine's code root**:
-`$OBSIDIAN_VAULT/Projects/_index.md`
+`$OBSIDIAN_VAULT/Projects/WorkspaceIndex.md`
 
-**`_index.md` is the only way to choose a workspace.** Never pick one by browsing `Projects/` or by
+**`WorkspaceIndex.md` is the only way to choose a workspace.** Never pick one by browsing `Projects/` or by
 grepping for a term — a trial or archived copy can look more relevant than the live workspace,
 because it is the one that has been reorganised. Read the index first, every time.
 
@@ -71,7 +74,7 @@ because it is the one that has been reorganised. Read the index first, every tim
    variable, then `~/.claude/code-root` (one line, whitespace trimmed, leading `~/` or `$HOME/`
    expanded), then the default `~/code`.
 
-2. Read `_index.md` and match. Rows hold paths **relative to the code root**; a row starting with
+2. Read `WorkspaceIndex.md` and match. Rows hold paths **relative to the code root**; a row starting with
    `/` is absolute and matched literally. See "Paths are machine-relative" in
    [reference/templates.md](reference/templates.md).
    - **Path match** → use the workspace it names.
@@ -85,11 +88,11 @@ because it is the one that has been reorganised. Read the index first, every tim
      resolved and where it came from, and do not scaffold — a second workspace for an existing repo
      is the split-brain this index exists to prevent.
    - **No match, and the index is empty** → genuinely new. Scaffold (Step 2) and add a row.
-   - **`_index.md` missing** → create it with the header from
+   - **`WorkspaceIndex.md` missing** → create it with the header from
      [reference/templates.md](reference/templates.md), then scaffold — subject to the Step 0
      consent gate if this is the first write to a vault that already has content.
 
-3. **Check for a trial workspace.** `_index.md` may carry a `## Trial workspaces` section listing a
+3. **Check for a trial workspace.** `WorkspaceIndex.md` may carry a `## Trial workspaces` section listing a
    second, not-yet-adopted workspace for the same repo. If the repo you matched appears there:
    - The **main table's row is authoritative**. Write there, not to the trial.
    - Say so in one line — "note that `<trial>` also exists as a trial copy; writing to the live
@@ -123,17 +126,19 @@ or written.
 
 To scaffold:
 
-1. Create `$OBSIDIAN_VAULT/Projects/<repo>/` and, inside it, the folders from
-   [reference/structure.md](reference/structure.md): `Tickets/`, `Epics/`, `Research/`, `Notes/`,
-   `Decisions/`, `Threads/`, `Log/`. **Create each on first use, never empty** — an empty folder is
+1. Create `$OBSIDIAN_VAULT/Projects/<Repo>/` — the repo's name in PascalCase (`home-budgeter` →
+   `HomeBudgeter`) — and, inside it, the folders from
+   [reference/structure.md](reference/structure.md): `Tickets/`, `Epics/`, `Playbooks/`, `Research/`,
+   `Notes/`, `Decisions/`, `Threads/`, `Log/`. **Create each on first use, never empty** — an empty folder is
    noise in the sidebar and tells the reader nothing.
 2. Create `Overview.md` from the template in [reference/templates.md](reference/templates.md) — what
-   the repo is, current focus, the absolute repo path, links to external trackers.
-3. Create `Progress Log.md` as a **one-line-per-day index**, not a stack of entries. The detail lives
+   the repo is, current focus, next up, the repo path relative to the code root, links to external
+   trackers.
+3. Create `ProgressLog.md` as a **one-line-per-day index**, not a stack of entries. The detail lives
    in `Log/<date>.md`.
 4. Write `.vault-config.json` — this file is what marks the workspace structured; nothing else does.
    A new workspace has no content to derive topics from, so start with `"topics": {}` and add them as
-   subjects emerge. The indexes work from day one; the Topic Index is simply empty until there are
+   subjects emerge. The indexes work from day one; the TopicIndex is simply empty until there are
    topics.
 
 ```json
@@ -151,7 +156,7 @@ The folder skeleton is **fixed by the contract**, not configured here — every 
 folder names and the same document types, and skills may rely on that. What stays per-project is the
 **vocabulary**: `topics`, `min_hits`, `title_weight`, and optionally `root_notes`.
 
-5. Add the row to `_index.md`. Record the repo's path **relative to the code root** (just `<repo>` for a repo sitting directly in it); use an absolute path only for a repo outside the root.
+5. Add the row to `WorkspaceIndex.md`. Record the repo's path **relative to the code root** (just `<repo>` for a repo sitting directly in it); use an absolute path only for a repo outside the root.
 
 **Growing the topic vocabulary.** Add a topic once three or four notes would carry it — earlier and
 it is noise, later and the index has a gap. Each topic needs specific patterns; one matching a common
@@ -163,9 +168,9 @@ the next session-end hook run re-derives topics across every note.
 Before acting on a task or answering "what's the status", read the workspace's current state. This is
 the context that would otherwise be lost.
 
-- `Overview.md`, `Threads Index.md` (which names the open threads and their
-  counts), and the newest lines of `Progress Log.md`, following the top one or two dates into
-  `Log/<date>.md` for the detail.
+- `Overview.md` (its `## Next up` is the queued work), `ThreadsIndex.md` (open threads and active
+  playbooks with their counts), and the newest lines of `ProgressLog.md`, following the top one or
+  two dates into `Log/<date>.md` for the detail.
 
 ## Answering "what's next" / status questions
 
@@ -180,18 +185,19 @@ tracker (`glab`/`gh`) or planning doc:
 
 1. Locate the workspace (Step 1). If the repo has **no** workspace yet, say so and offer to bootstrap
    it with `ingest-project-docs` — do not silently fall back to the tracker.
-2. Read the queued work, then `Overview.md` "current focus", then the latest log entry (its
-   **Next:** line is usually the direct answer).
-   - `Threads Index.md` and the threads it flags for pick-up, then the newest
-     `Log/<date>.md`. `Topic Index.md` answers "what do we have on X" directly.
-3. Answer from that. Prioritize: the current-focus area first, then open threads, then a stated **Next**.
+2. Read `Overview.md` — its `## Next up` section is the direct answer, and "current focus" frames it.
+   Then `ThreadsIndex.md` for open threads and active playbooks, following the top items into their
+   notes. `TopicIndex.md` answers "what do we have on X" directly.
+   - **Legacy workspace with no `## Next up`:** fall back to the `Next:` line of the newest
+     `Log/<date>.md`, say it came from an old log, and offer to move it into the Overview.
+3. Answer from that. Prioritize: `## Next up` first, then open threads and active playbooks.
 4. Only consult the tracker as a *supplement* — to enrich an item or if the vault is genuinely silent —
    and mention that you're going beyond the vault when you do.
 
 **Check the workspace is current before trusting it over a tracker.** That preference is earned by a
 workspace someone has been keeping up; it is wrong for one that is empty or months behind, where
 deferring to it means answering from stale information and calling it the source of truth. Compare
-the newest `Progress Log.md` date against the repo's last commit date:
+the newest `ProgressLog.md` date against the repo's last commit date:
 
 - **Workspace within a few days of the last commit** → proceed as above; it is current.
 - **Workspace materially behind the repo** (say a week or more of commits it does not mention) →
@@ -213,10 +219,16 @@ Create a file (with its header) only if it is absent.
 
 Read [reference/structure.md](reference/structure.md) first. In short:
 
-- **The day's log** — write or append to `Log/YYYY-MM-DD.md` (`type: log`, `date:` matching the
-  filename). Then add or update that day's one-line entry in the root `Progress Log.md`, newest
-  first. Never append a dated entry to the root `Progress Log.md` itself — it is an index.
-- **A decision** — a **new note** in `Decisions/`, named for the decision in kebab-case, with
+- **The day's log** — write `Log/YYYY-MM-DD.md` (`type: log`, `date:` matching the filename) as
+  **one** `Did` / `Decided` / `Learned` / `Links` block. If the day's note already exists, **merge
+  into its sections** — never add a second block or a `###` sub-entry, and fix any earlier line the
+  day's later work made wrong. **No `Next:` line.** Then add or update that day's one-line entry in
+  the root `ProgressLog.md`, newest first. Never append a dated entry to the root `ProgressLog.md`
+  itself — it is an index.
+- **Next up** — rewrite `Overview.md`'s `## Next up`: remove what got done, add what is now next,
+  at most five bullets, each linking its thread or playbook. This is the only place next work is
+  written.
+- **A decision** — a **new note** in `Decisions/`, named for the decision as a PascalCase claim, with
   `type: decision`, `status: active`, `decided: YYYY-MM-DD`, and `tickets:`. Never append to a
   `Decisions.md` — in this layout that file does not exist and must not be created.
 - **Superseding a decision** — when the new decision replaces an old one, **edit the old note**: set
@@ -224,32 +236,60 @@ Read [reference/structure.md](reference/structure.md) first. In short:
   Add the matching `supersedes:` and `> [!note]` callout on the new one. Skipping this is the single
   failure this layout exists to prevent — both notes then read as current.
 - **A thread** — one note per thread in `Threads/`, `type: thread`. Tick `- [x]` inside it as items
-  finish; set `status: done` when nothing is left.
+  finish — the item text stays one line, with no "done on <date>" or outcome narrative appended.
+  When nothing is left — or the user says the thread is done or abandoned — **close it**: move its
+  decisions, durable knowledge and leftover items to their own notes, then reduce it to the closing
+  stub (`status: done`, `closed:`, Goal / Outcome / Moved to). See "Closing a thread" in
+  [reference/structure.md](reference/structure.md).
+- **A playbook** — an ordered procedure goes in `Playbooks/` as `<Subject>Playbook.md`,
+  `type: playbook`. While it is being executed it is the tracker: tick its steps in place and do
+  not open a thread that repeats them.
 - **Overview** — update "current focus" when the direction of the work shifts.
+- **Time tracking** — only if `TimeTracking.md` exists: measure the sittings since `tracked_through:`
+  and update the table, per [reference/time-tracking.md](reference/time-tracking.md).
+- **Names** — every note is PascalCase: `FrameworkIsFastapiOverDjango`, `VaultPushReliability`,
+  `AdminApiPermissionsAudit`, `ACME-1701-NaturalSortAdApprovals`; logs stay `YYYY-MM-DD`. The
+  `# Heading` is the readable sentence-case form. Full table: "Naming notes" in
+  [reference/structure.md](reference/structure.md).
+
+### Current-state notes are rewritten, not appended
+
+Every note except a log is **current state** — see "Two kinds of note" in
+[reference/structure.md](reference/structure.md). When the work changes one, **rewrite it in place
+so it is true today**: delete finished or wrong lines, do not annotate them ("~~X~~", "update:",
+"now done"). Git holds the history. When you touch a current-state note that already breaks its
+template, bring it into the template as part of the same edit.
+
+**Removing something? Remove its references too.** When a decision is superseded, a thread closes
+or a note is deleted or renamed, grep the workspace for links and mentions of it and fix every
+current-state note that still points at it. Logs are history and keep their links.
+
+Templates for every type, and the naming table, are in
+[reference/templates.md](reference/templates.md) and [reference/structure.md](reference/structure.md).
 - **Never create** `Decisions.md`, `Open Threads.md`, or a dated section inside the root
-  `Progress Log.md`. Those are retired flat-layout files; creating them produces two contradictory
+  `ProgressLog.md`. Those are retired flat-layout files; creating them produces two contradictory
   sources of truth in one workspace.
 
 **Do not hand-write `project:`, `topics:` or `tags:`.** The `vault-maintain` SessionEnd hook derives
 them and rewrites them anyway. Write `type`, `status`, the dates and the body; the hook fills in the
-rest and regenerates `Topic Index.md` and `Tickets Index.md` before the vault is committed. Write
+rest and regenerates `TopicIndex.md` and `TicketsIndex.md` before the vault is committed. Write
 `topics:` explicitly only when you know the derived guess would be wrong — a hand-written list is
 respected.
 
-**Never hand-edit `Topic Index.md` or `Tickets Index.md`.** They are generated; edits are lost.
+**Never hand-edit `TopicIndex.md` or `TicketsIndex.md`.** They are generated; edits are lost.
 
 ### How to write a wikilink
 
 Obsidian resolves a bare `[[name]]` by searching the vault, so the rule follows from whether the
 name is unique.
 
-- **A uniquely-named note → link it bare.** `[[use-token-bucket-over-fixed-window]]`, `[[2026-09-07]]`.
-  This is the normal case in a structured workspace: one note per fact gives kebab-case names that
+- **A uniquely-named note → link it bare.** `[[UseTokenBucketOverFixedWindow]]`, `[[2026-09-07]]`.
+  This is the normal case in a structured workspace: one note per fact gives PascalCase names that
   are naturally unique. A bare link is readable and survives the workspace being renamed or moved.
 - **A per-workspace structural file → always prefix it with the workspace.**
-  `[[Takeoffs/Overview]]`, `[[Takeoffs/Progress Log]]`, `[[Takeoffs/Decisions Index]]`. These six
-  names — `Overview`, `Progress Log`, `Topic Index`, `Tickets Index`, `Threads Index`,
-  `Decisions Index` — exist once per workspace **by design**, so a bare link to one is ambiguous
+  `[[Takeoffs/Overview]]`, `[[Takeoffs/ProgressLog]]`, `[[Takeoffs/DecisionsIndex]]`. These
+  names — `Overview`, `ProgressLog`, `TopicIndex`, `TicketsIndex`, `ThreadsIndex`,
+  `DecisionsIndex`, `TimeTracking` — exist once per workspace **by design**, so a bare link to one is ambiguous
   across the vault.
 
 The exception that makes the second rule bearable: **inside a workspace, linking to that workspace's
@@ -271,12 +311,16 @@ The vault is older than this skill and does not always match it. When they disag
 line and keep going** — do not silently pick one, and do not stop and interrogate the user over
 something small.
 
-- **Two workspaces claim the same repo** → write to the one in `_index.md`'s main table; mention the
+- **Two workspaces claim the same repo** → write to the one in `WorkspaceIndex.md`'s main table; mention the
   trial exists. (Step 1.)
 - **The superseded decision has no note** → record the replacement in prose, not frontmatter, and say
   you did. (See [reference/structure.md](reference/structure.md).)
-- **An existing file breaks the format this skill documents** → follow the documented format for what
-  you add. Do not reformat what is already there; a logging pass is not a cleanup pass.
+- **An existing file breaks the format this skill documents** → if you are editing that note anyway,
+  bring it into its template as part of the edit. Notes you are not touching are left for the
+  `condense-vault` reconcile pass — do not sweep the workspace mid-task.
+- **The workspace predates 2.0 names** (`Progress Log.md`, `Topic Index.md`, kebab-case or spaced
+  note names) → read the old names, write new notes with the 2.0 names, and say once that the
+  `condense-vault` reconcile pass will rename the rest. Do not rename on a logging pass.
 - **A note carries frontmatter this contract does not list** → leave it, do not copy it forward.
 - **The workspace is `status: paused` but the user is doing work in it** → log the work and ask
   whether to un-pause. Do not change project status on your own initiative.
@@ -284,13 +328,13 @@ something small.
 Stop and ask only when writing would **destroy or contradict** something — never merely because the
 vault is untidy.
 
-## Maintaining the Tasks Archive
+## Maintaining the TasksArchive
 
-`$OBSIDIAN_VAULT/Tasks Archive.md` is the quick-reference the user scans before a personal update
+`$OBSIDIAN_VAULT/TasksArchive.md` is the quick-reference the user scans before a personal update
 meeting: **one line per working day**, condensed enough to take in at a glance months later. It is
-the thin layer above the per-repo `Progress Log.md` files, never a replacement for them.
+the thin layer above the per-repo `ProgressLog.md` files, never a replacement for them.
 
-**Append today's row when the session is closed out**, alongside the Progress Log entry — on the
+**Append today's row when the session is closed out**, alongside the ProgressLog entry — on the
 same triggers as everything else in "When to log progress" below, never mid-session.
 
 ### Structure
@@ -320,7 +364,7 @@ projects header above its table, then the table itself:
 
 Rows are **terse by design** — the archive is scanned, not read. One short clause per project touched
 that day, **three to four words each**, comma-separated, at a very high level. The detail belongs in
-that project's `Progress Log`; do not restage it here.
+that project's `ProgressLog`; do not restage it here.
 
 - Name the project when the clause needs the context (`home-budgeter Phase 0 landed`), and carry a
   ticket number only where it *is* the shortest identifier (`ACME-1763 Laravel 13 planned`).
@@ -344,10 +388,25 @@ Book work under the date it **started**. A session that runs past midnight still
 it began, so it appends to that day's row rather than opening a new one. If a row for the day already
 exists, extend it — never add a second row for the same date.
 
+## Time tracking (optional)
+
+Some projects track hours per phase against their estimates. It is **opt-in per workspace**: set it
+up only when the user asks ("set up time tracking", "track my hours on this project"). Never create
+`TimeTracking.md` unprompted, and never suggest it as part of an ordinary logging pass.
+
+To set it up: create `TimeTracking.md` from the template in
+[reference/templates.md](reference/templates.md), with one row per phase (and subphase, where the
+plan estimates one) taken from the project's playbooks. Then measure the time already spent, as far
+back as the transcripts go, with the method in
+[reference/time-tracking.md](reference/time-tracking.md). Tell the user how far back that reached:
+transcripts expire after 30 days by default, so anything earlier can only come from the user's own records.
+
+Once the file exists, every close-out updates it (see "When to log progress").
+
 ## When to log progress
 
-Progress logging is **not** continuous. Do not append Progress Log entries, Decisions, Open Threads
-updates, or Tasks Archive rows mid-session as work happens — that noise interrupts the actual coding
+Progress logging is **not** continuous. Do not append ProgressLog entries, Decisions, thread
+updates, or TasksArchive rows mid-session as work happens — that noise interrupts the actual coding
 work. Write to the vault only on one of these two triggers:
 
 - **The user explicitly asks** — "log progress", "record what we did", "record this decision",
@@ -355,9 +414,9 @@ work. Write to the vault only on one of these two triggers:
 - **The user says to close out the session** — "close out the session", "wrap up", "we're done for
   the day", "end of session", or an equivalent.
 
-When one of those fires, do the whole write in one pass: append the Progress Log entry, update Open
-Threads and Decisions as needed, and append the day's row to [[Tasks Archive]] (see "Maintaining the
-Tasks Archive" above).
+When one of those fires, do the whole write in one pass: write or merge the day's log and its
+ProgressLog line, rewrite `## Next up`, update threads (closing any that finished), playbooks and
+decisions as needed, update `TimeTracking.md` if the workspace has one, and append the day's row to [[TasksArchive]] (see "Maintaining the TasksArchive" above).
 
 Reading the vault is unrestricted — read it freely whenever you need context (Step 3, and the
 "what's next" flow). The restriction is on *writes*.
@@ -384,10 +443,14 @@ even when the user has Claude running verbose.
 
 ## Vault writing style
 
-Two rules govern all markdown written to the vault:
+Write for **someone scanning for one fact**, not someone reading start to finish. The full rules and per-type length budgets are in "Writing style" in [reference/structure.md](reference/structure.md); in short:
 
-- **No hard line breaks inside a text block.** Each paragraph or bullet is one source line, however long; blank lines separate paragraphs. Obsidian soft-wraps to the pane width — never wrap prose to a column width.
-- **ADHD-friendly prose** — clarity, not brevity: short one-idea sentences, the point stated first, visible structure (headings, bullets, **bold** key terms), and explanations spelled out rather than compressed.
+- **Answer first.** The first line under any heading is the answer; setup comes after, if at all.
+- **Bullets and `**Key:** value` pairs over paragraphs** — a paragraph is at most three short sentences.
+- **Outcome, not process.** What is true or was decided, never the story of getting there.
+- **One fact, one place.** Link the specific note that owns a fact instead of restating it.
+- **No stale pointers.** Remove references to finished, superseded or deleted things from current-state notes.
+- **One continuous line per block** — no hard line breaks inside a paragraph, bullet or blockquote.
 
 ## Vault git sync
 
@@ -403,7 +466,7 @@ it). The only time to touch vault git yourself is when the user explicitly asks 
 - Dates: `YYYY-MM-DD`. Tags (if used in frontmatter): lowercase, hyphenated.
 - The vault links *out* to Jira/GitHub/GitLab; it does not push changes back to them.
 
-## Templates and worked examples
+## Templates
 
-Index-note format, the four file templates, and worked progress/decision entries are in
+The index-note format and a template for every note type are in
 [reference/templates.md](reference/templates.md).

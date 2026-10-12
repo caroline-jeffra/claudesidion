@@ -14,12 +14,16 @@ These rules apply to **every markdown file written into the vault**, by any skil
 
 **No hard line breaks inside a text block.** Each paragraph and each bullet is a single source line, however long; separate paragraphs with a blank line. Obsidian soft-wraps to the pane width, so hard-wrapped lines (the 80/100-column habit from code) produce ragged, uncomfortable reading there. Never wrap prose to a column width.
 
-**ADHD-friendly writing.** This is about clarity, not brevity — do not compress notes into terse fragments:
+**Scan-first writing.** Every note is written for someone scanning for one fact, not someone reading start to finish:
 
-- Short, well-formed sentences: one idea per sentence, active voice, concrete words.
-- Front-load the point: the first sentence of a note or section says what it's about; explanation follows.
-- Make structure visible: headings for topics, bullets for enumerable things, **bold** for the key term a scanning eye should catch. No walls of text — break any paragraph carrying more than one thought.
-- Explain, don't allude: spell out the "why" in plain words instead of gesturing at it. A reader with no momentum should be able to pick the note up cold.
+- **Answer first.** The first line of a note, and the first line under every heading, is the point. Setup and reasoning follow, if at all.
+- **Bullets and `**Key:** value` pairs over paragraphs.** A paragraph is at most three short, one-idea sentences in active voice.
+- **Outcome, not process.** Write what is true or what was concluded — never the story of how you got there.
+- **One fact, one place.** Link the note that owns a fact instead of restating it, and link the specific note rather than an index.
+- **No stale pointers.** When something is finished, superseded or deleted, remove references to it rather than annotating them ("~~old~~", "update:", "no longer true").
+- **Bold only the load-bearing claim.** If everything is bold, nothing is.
+
+Project workspaces add per-type templates and length budgets on top of these rules: see "Writing style" in [manage-project-workspaces/reference/structure.md](../../manage-project-workspaces/reference/structure.md).
 
 ## Frontmatter fields
 
@@ -52,15 +56,16 @@ The rule above still holds everywhere else in the vault, including `Notes/`, `Re
 
 ## Wikilinks
 
-- Link liberally: `[[Note Title]]`. This is how the vault becomes navigable.
+- Link liberally: `[[NoteName]]`. This is how the vault becomes navigable.
 - Link to notes that do not exist yet — a dangling `[[link]]` is a valid "write this later" marker
   and shows up in Obsidian's unresolved-links view.
-- Prefer linking over duplicating: reference `[[Rate Limiting Strategies]]` instead of restating it.
-- Use display text when the flow needs it: `[[Rate Limiting Strategies|rate limiting]]`.
+- Prefer linking over duplicating: reference `[[RateLimitingStrategies]]` instead of restating it.
+- Use display text when the flow needs it: `[[RateLimitingStrategies|rate limiting]]`.
 
 ## Filenames
 
-- `<Title>.md`, Title Case, spaces allowed (Obsidian resolves `[[Title]]` to the file).
+- `<Name>.md` in **PascalCase**, like every note in the vault: `CacheInvalidationApproaches.md`. Acronyms are words (`ApiDesign`, not `APIDesign`); no spaces, hyphens or punctuation.
+- The `# Heading` inside is the readable form: `# Cache invalidation approaches`.
 - No dates in general-note filenames (dates live in frontmatter). Dated filenames are for logs, which
   are the `manage-project-workspaces` skill's job.
 
@@ -78,11 +83,11 @@ created: 2026-07-10
 tags: [caching, system-design]
 ---
 
-# Cache Invalidation Approaches
+# Cache invalidation approaches
 
 Cache invalidation is the hard part of caching. Three common strategies: **TTL expiry**, **write-through**, and **explicit purge** on mutation. TTL is the simplest, but it serves stale data within the expiry window.
 
-Related: [[Rate Limiting Strategies]], [[Redis]]
+Related: [[RateLimitingStrategies]], [[Redis]]
 ```
 
 **Reference note (summarizing an external source):**
@@ -93,11 +98,11 @@ tags: [book, productivity]
 aliases: [GTD]
 ---
 
-# Getting Things Done
+# Getting things done
 
 Core idea: capture everything into a trusted system, then process each item into a concrete next action. A weekly review is what keeps the system trustworthy.
 
 Source: David Allen, *Getting Things Done*.
 
-Related: [[Inbox Zero]]
+Related: [[InboxZero]]
 ```

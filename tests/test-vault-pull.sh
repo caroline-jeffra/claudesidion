@@ -14,7 +14,7 @@ printf '\033[1mvault-pull.sh\033[0m\n'
 strand() {
   local v="$1" n="$2" i
   for ((i = 1; i <= n; i++)); do
-    printf 'stranded %s\n' "$i" >> "$v/Projects/note.md"
+    printf 'stranded %s\n' "$i" >> "$v/Projects/Note.md"
     gitq "$v" commit -qam "stranded $i"
   done
 }

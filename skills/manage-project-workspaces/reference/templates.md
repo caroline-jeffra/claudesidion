@@ -1,13 +1,13 @@
 # Workspace templates
 
 ## Contents
-- Index note (`Projects/_index.md`)
-- Overview.md
-- Progress Log.md
+- Index note (`Projects/WorkspaceIndex.md`)
+- Overview.md · ProgressLog.md · Log · TimeTracking.md (optional)
+- Thread · Playbook · Research · Ticket · Decision · Note
 - `.vault-config.json`
-- Worked examples
+- `TasksArchive.md`
 
-## Index note (`Projects/_index.md`)
+## Index note (`Projects/WorkspaceIndex.md`)
 
 Maps each repo to its workspace folder. Header + one row per repo:
 
@@ -70,6 +70,8 @@ without a manual merge.
 
 ## Overview.md
 
+Current state. Rewrite in place on every close-out so it is true today. Budget: 200 words.
+
 ```markdown
 ---
 type: overview
@@ -78,26 +80,34 @@ status: active
 
 # <repo>
 
-**Repo path:** `/absolute/path/to/repo`
+**Repo path:** `<path relative to the code root>`
 
 **Current focus:** <one line — what the work is right now>
 
+## Next up
+
+- <the next concrete step> — [[<ThreadOrPlaybook>]]
+- <at most five bullets, most urgent first; remove a bullet the moment it is done>
+
 ## What this is
-<A few sentences: what the codebase does, why the user is working on it.>
+
+<Two or three sentences: what the codebase does, why the user is working on it.>
 
 ## Trackers
+
 - Jira: <url or n/a>
 - GitHub/GitLab: <url or n/a>
 
 ## Map
-- [[Progress Log]] · [[Topic Index]] · [[Decisions Index]] · [[Threads Index]]
-- `Decisions/` · `Threads/` · `Log/` · `Tickets/` · `Research/` · `Notes/`
+
+- [[ProgressLog]] · [[TopicIndex]] · [[DecisionsIndex]] · [[ThreadsIndex]]
 ```
 
-## Progress Log.md
+`## Next up` is **the only place next work is stated** in a workspace. Each bullet names one action and links the thread or playbook holding the detail.
 
-In a structured workspace this is an **index**: one line per working day, newest first. The detail
-lives in `Log/YYYY-MM-DD.md`. Never append a dated section to this file.
+## ProgressLog.md
+
+An **index**: one line per working day, newest first. The detail lives in `Log/YYYY-MM-DD.md`. Never append a dated section to this file.
 
 ```markdown
 ---
@@ -105,19 +115,16 @@ type: log-index
 status: reference
 ---
 
-# Progress Log — <repo>
+# Progress log — <repo>
 
 One line per working day. Detail lives in the dated note.
 
+- **[[YYYY-MM-DD]]** — <one-line headline of the day, ≤ 12 words>
 ```
 
-Each line, newest first:
+## Log — `Log/YYYY-MM-DD.md`
 
-```markdown
-- **[[YYYY-MM-DD]]** — <one-line summary of the day>
-```
-
-And the day's note itself, `Log/YYYY-MM-DD.md`:
+History. One block per day; a later close-out the same day **merges into these sections**. Budget: 150 words. **No `Next:` line** — next work goes in `Overview.md`'s `## Next up`.
 
 ```markdown
 ---
@@ -127,11 +134,243 @@ date: YYYY-MM-DD
 
 # YYYY-MM-DD
 
-- **Did:** <what changed>
-- **Learned:** <what you now know that you did not before>
-- **Next:** <the next step>
-- **Links:** [[a-decision-note]], PR <url>
+- **Did:** <what changed — outcomes, one clause each, semicolon-separated>
+- **Decided:** [[<DecisionNote>]] <omit the line if nothing was decided>
+- **Learned:** <what you now know that you did not before; omit if nothing>
+- **Links:** [[<ThreadOrPlaybook>]], PR <url>
 ```
+
+## Thread — `Threads/<NounPhrase>.md`
+
+Current state. Budget: 300 words. Done items collapse to one line each with no date or narrative; when nothing is open, set `status: done` and remove it from `## Next up`.
+
+```markdown
+---
+type: thread
+status: open
+tickets: []
+---
+
+# <Thread name in sentence case>
+
+**Goal:** <one line — what "finished" looks like>
+
+## Open
+
+- [ ] <action> — <one-line context if needed> ([ACME-123](url))
+
+## Done
+
+- [x] <action>
+```
+
+**Closing it** — when the last item is ticked, or the user says it is done or abandoned, follow "Closing a thread" in [structure.md](structure.md): move decisions, durable knowledge and leftover items to their own notes, then reduce the thread to this stub.
+
+```markdown
+---
+type: thread
+status: done
+closed: YYYY-MM-DD
+---
+
+# <Thread name in sentence case>
+
+**Goal:** <the original goal>
+
+**Outcome:** <one line — shipped, or abandoned and why>
+
+**Moved to:** [[<DecisionNote>]], [[<Note>]], [[<OtherThread>]]
+```
+
+## Playbook — `Playbooks/<Subject>Playbook.md`
+
+Current state: the plan **and** its tracker. Tick steps in place as they finish; do not mirror them into a thread. `status: active` while being executed, `done` when finished, `reference` for a procedure you re-run (a setup guide, a cutover runbook).
+
+~~~markdown
+---
+type: playbook
+status: active
+tickets: []
+---
+
+# <Subject in sentence case> playbook
+
+**Goal:** <one line — the outcome this playbook produces>
+
+**Done when:** <checkable condition — a command that passes, a URL that serves, a state you can observe>
+
+## Before you start
+
+- <prerequisite or access needed>
+- <decision to make first> — [[<DecisionNote>]] once made
+
+## Steps
+
+- [ ] **1. <Step title>** (~<estimate>) — <one line on what and why>
+  - `<command>` or <sub-action>
+- [ ] **2. <Step title>** (~<estimate>) — <one line>
+
+## Verify
+
+```bash
+<the commands that prove "done when">
+```
+
+## Gotchas
+
+- **<Trap>** — <how to avoid it>
+
+## Out of scope
+
+- <what this playbook deliberately does not do, and where it lives instead>
+~~~
+
+- **Steps are actions, not essays.** One line each; sub-bullets only for the commands or sub-actions needed to carry it out. Reasoning belongs in a linked decision or research note.
+- **Decisions do not live in the playbook.** "Before you start" names them; once made, each becomes a decision note and the bullet links it.
+- **No outcome narration on ticked steps.** `- [x] **3. Alembic init**` is complete. What happened goes in the day's log.
+
+## Research — `Research/<Subject><Kind>.md`
+
+Current state. No length budget, but the TL;DR is mandatory: a reader who stops after it must have the answer.
+
+```markdown
+---
+type: research
+status: reference
+tickets: []
+---
+
+# <Subject in sentence case> — <kind>
+
+## TL;DR
+
+- <the conclusion>
+- <the second most important finding>
+- <what it means for the work — link the decision or playbook it fed>
+
+## <Section per question answered>
+
+<Findings as bullets and tables. Evidence links inline.>
+
+## Sources
+
+- <url or repo path>
+```
+
+`<Kind>` is one of `Audit` · `Analysis` · `Plan` · `Spec` · `Review` · `Map` · `Reference` — e.g. `AdminApiPermissionsAudit.md`, heading `# Admin API permissions — audit`.
+
+## Ticket — `Tickets/<TICKET-ID>-<Subject>.md`
+
+Current state. Budget: 250 words.
+
+```markdown
+---
+type: ticket
+status: active
+tickets: [ACME-1234]
+---
+
+# ACME-1234 <short subject>
+
+**Goal:** <one line>
+
+**Status:** <one line — where it stands now>
+
+## Findings
+
+- <what was learned that outlives the ticket>
+
+## Links
+
+- Ticket: <url> · PR: <url>
+- [[<RelatedResearchDecisionOrPlaybook>]]
+```
+
+## Decision — `Decisions/<ClaimInPascalCase>.md`
+
+Current state (until superseded). Budget: 150 words.
+
+```markdown
+---
+type: decision
+status: active
+decided: YYYY-MM-DD
+tickets: []
+---
+
+# <Claim in sentence case>
+
+**Decision:** <one sentence — the rule now in force>
+
+**Why:** <one or two sentences>
+
+**Rejected:** <alternative> — <one-line reason>; <alternative> — <reason>
+
+**Source:** [[YYYY-MM-DD]] <or the research note it came from>
+```
+
+A **convention** uses the same shape with `type: convention`, no `decided:`, and `**Rule:**` in place of `**Decision:**`.
+
+## Note — `Notes/<NounPhrase>.md`
+
+Current state. Lead with the fact or technique in one line; the rest supports it.
+
+```markdown
+---
+type: note
+status: reference
+---
+
+# <Title in sentence case>
+
+<The fact or technique, in one or two sentences.>
+
+- <supporting detail>
+- <example or command>
+
+Related: [[<OtherNote>]]
+```
+
+## TimeTracking.md — optional, on request only
+
+A summary table and nothing else: every number links to where its detail lives. Created only when the user asks for time tracking; the method and the script behind the numbers are in [time-tracking.md](time-tracking.md).
+
+```markdown
+---
+type: time-tracking
+status: active
+tracked_through: YYYY-MM-DD
+---
+
+# Time tracking — <repo>
+
+**Budget:** <N> hrs/week · ~<N> hrs by <deadline> — [[<BudgetDecision>]]
+
+## Phases
+
+| Phase | Status | Estimate | Actual | Variance | Sittings | Dates | Links |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Planning | done | — | 3.37 | — | 8 | 08-15 | [[2026-08-15]] |
+| **0 Walking skeleton** | done | 12 | 7.89 | −34% | 6 | 08-16 → 08-19 | [[WalkingSkeletonPlaybook]] |
+| 0.1–0.5 Scaffold and CI | done | 4 | 2.25 | −44% | 1 | 08-16 | [[2026-08-16]] |
+| **1 Data model and CRUD** | active | 25 | 11.13 | — | 13 | 08-23 → | [[DataModelAndCrudPlaybook]] |
+| **Total** | | 165 | 22.39 | | 28 | | |
+
+## Weekly hours
+
+| Week | Weekday | Weekend | Total | vs budget |
+| --- | --- | --- | --- | --- |
+| Aug 17–23 | 6.24 | 0.80 | 7.04 | within |
+```
+
+- **Phase rows in bold, subphase rows plain** directly beneath their phase. Add subphase rows only for subphases with their own estimate.
+- **Hours as decimals**, two places. Estimates as the plan wrote them.
+- **Status** is `planned`, `active`, `done` or `dropped`.
+- **Variance** only once a row is `done`: `(actual − estimate) / estimate`, as a signed whole percent. Rows without an estimate (planning, project management) show `—`.
+- **Dates** as `MM-DD`, with an open arrow (`08-23 →`) while active.
+- **Links** point at the playbook for a phase and the log or PR for a subphase. Analysis of the numbers, such as estimate accuracy, goes in a `Research/` note linked from the budget line, never in this file.
+- **vs budget** is `under`, `within` or `over`, against the weekly hours on the budget line.
+- `tracked_through:` is the last day whose sessions are counted, so the next update starts from the day after.
 
 ## `.vault-config.json`
 
@@ -151,45 +390,9 @@ Written at scaffold time; this file is what marks a workspace structured.
 The folder skeleton is fixed by the contract and is not configured here. What varies per project is
 the vocabulary: `topics`, `min_hits`, `title_weight`, and optionally `root_notes`.
 
-## Worked examples
+## `TasksArchive.md` (vault root — create once per vault)
 
-**A day's log** — `Log/2026-07-10.md`, with its one-line entry added to the root `Progress Log.md`:
-```markdown
----
-type: log
-date: 2026-07-10
----
-
-# 2026-07-10
-
-- **Did:** Added Redis-backed rate limiter to the API gateway.
-- **Learned:** Bursty clients were exhausting the DB connection pool; the limiter is the fix, not more pool headroom.
-- **Next:** Load-test the 429 path and tune the window.
-- **Links:** [[use-token-bucket-over-fixed-window]], PR #142
-```
-
-**A decision** — `Decisions/use-token-bucket-over-fixed-window.md`, one note per decision:
-```markdown
----
-type: decision
-status: active
-decided: 2026-07-10
----
-
-# Use token-bucket over fixed-window
-
-**Decision.** Rate limiting uses a token-bucket algorithm.
-
-**Rationale.** Smooths bursts without the boundary spikes fixed-window allows.
-
-**Alternatives considered.** Fixed-window — simpler, but double-rate at window edges. Leaky-bucket — rejected, no burst allowance the product wants.
-
-**From:** [[2026-07-10]]
-```
-
-## `Tasks Archive.md` (vault root — create once per vault)
-
-Lives at `$OBSIDIAN_VAULT/Tasks Archive.md`, not inside a workspace. Seed it with the frontmatter and
+Lives at `$OBSIDIAN_VAULT/TasksArchive.md`, not inside a workspace. Seed it with the frontmatter and
 intro only; months and rows get appended as work happens.
 
 ```markdown
@@ -198,11 +401,11 @@ created: <YYYY-MM-DD>
 tags: [index, archive]
 ---
 
-# Tasks Archive
+# Tasks archive
 
 One line per working day, newest year first. This is the quick-reference for personal update meetings — scan a month, recall what you shipped.
 
-Rows are deliberately **terse**: one short clause per project touched that day, three to four words each, at a very high level. No links inside table cells — the `Month's Projects` line above each table is where the project links live, and all detail lives in each project's `Progress Log`.
+Rows are deliberately **terse**: one short clause per project touched that day, three to four words each, at a very high level. No links inside table cells — the `Month's Projects` line above each table is where the project links live, and all detail lives in each project's `ProgressLog`.
 
 # <YYYY>
 

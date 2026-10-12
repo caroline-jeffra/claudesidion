@@ -163,7 +163,7 @@ section '[T1.3] Must not commit on detached HEAD'
 # ---------------------------------------------------------------------------
 
 v="$(build_vault detached)"
-printf 'second\n' > "$v/Projects/note.md"; gitq "$v" commit -qam second
+printf 'second\n' > "$v/Projects/Note.md"; gitq "$v" commit -qam second
 gitq "$v" checkout -q HEAD~1
 printf '# written while detached\n' > "$v/Projects/orphan.md"
 run_hook vault-push.sh "$v"
@@ -177,7 +177,7 @@ section '[T1.7] Failed commit must not leave the tree staged'
 # ---------------------------------------------------------------------------
 
 v="$(build_vault noidentity --no-identity --empty)"
-printf '# note\n' > "$v/Projects/note.md"
+printf '# note\n' > "$v/Projects/Note.md"
 run_hook vault-push.sh "$v"
 assert_eq 0 "$HOOK_RC" '[T1.7] no git identity: still exits 0'
 assert_eq 0 "$(staged_ct "$v")" '[T1.7] no git identity: index left unstaged'
@@ -201,7 +201,7 @@ git -C "$clone" config user.email t@e.invalid; git -C "$clone" config user.name 
 git -C "$clone" config commit.gpgsign false; git -C "$clone" config core.hooksPath /dev/null
 # The clone must actually have the seed commit checked out, or "the remote moves ahead" below
 # is a no-op and the push under test succeeds instead of being rejected.
-[ -e "$clone/Projects/note.md" ] || nope '[T1.8] diverged fixture: clone checked out' "clone is empty"
+[ -e "$clone/Projects/Note.md" ] || nope '[T1.8] diverged fixture: clone checked out' "clone is empty"
 printf 'theirs\n' > "$clone/Projects/theirs.md"
 git -C "$clone" add -A; git -C "$clone" commit -qm theirs; git -C "$clone" push -q
 printf '# ours\n' > "$v/Projects/ours.md"
