@@ -14,6 +14,12 @@ are minor.
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-10-12
+
+### Added
+
+- **`scripts/rename_note.py`** — renames or moves one vault note and rewrites every reference to it, vault-wide: bare, aliased, table-escaped, heading and path-qualified `[[links]]`, plus `supersedes:`/`superseded_by:` frontmatter in scalar, inline-list and block-list form. It uses `git mv` in a versioned vault and a plain move otherwise. When another note shares the old name, bare links are rewritten only inside the renamed note's workspace. Concurrent calls are serialised with a lock. `--dry-run` reports what would change. It is the tool used for the 2.0 retrofit of a real 11-workspace vault, and `condense-vault` now uses it for every rename and move instead of hand-run `git mv` and link edits.
+
 ## [2.0.1] — 2026-10-12
 
 ### Fixed

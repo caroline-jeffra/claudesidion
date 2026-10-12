@@ -22,6 +22,14 @@ The format rules are in [manage-project-workspaces/reference/structure.md](../ma
 
 **Rename first.** Work through `legacy-name` and `bad-name` before anything else: every other fix writes links, and they should point at the final names.
 
+**Every rename and move goes through the plugin's rename script** (`../../scripts/rename_note.py` relative to this skill's base directory) — never `git mv` or `mv` by hand. It moves the note (with `git mv` in a versioned vault) and rewrites every `[[link]]` and `supersedes:`/`superseded_by:` value that points at it, vault-wide, under a lock:
+
+```bash
+python3 "<plugin root>/scripts/rename_note.py" "<old vault-relative path>" "<new vault-relative path>"
+```
+
+Add `--dry-run` to see how many links a rename would rewrite. A name that another note elsewhere in the vault shares is rewritten bare only inside the renamed note's own workspace, so links that meant the other note are left alone.
+
 **Get the findings from the lint.** It ships with the plugin at `../../hooks/vault_maintain.py` relative to this skill's base directory:
 
 ```bash
@@ -38,9 +46,9 @@ Each line is `<workspace>/<path>: <code> — <detail>`. Work through them by cod
 | `stale-link` | A current-state note links a superseded decision or a finished thread. Repoint to the successor (`superseded_by`), or delete the line if it only existed to point at finished work. |
 | `broken-link` | Find where the target went (`git log --diff-filter=DR --name-status -- '*<name>*'`). Renamed → repoint. Deleted → remove the link, keeping the plain text only if the sentence still needs it. |
 | `index-link` | Replace the link to an index with a link to the specific note it meant. |
-| `bad-name` | Rename to PascalCase per the naming table with `git mv`, keeping the `# Heading` as the readable form. Then rewrite every `[[Old Name]]`, `[[Old Name\|` and `[[Workspace/Old Name` link in the vault to the new name. A **workspace folder** rename also updates its `WorkspaceIndex` row, its `Contributions/` note name and every `[[OldFolder/` link prefix (the TasksArchive's project lines included). |
+| `bad-name` | Rename to PascalCase per the naming table with the rename script, keeping the `# Heading` as the readable form; it rewrites the links. A **workspace folder** rename also updates its `WorkspaceIndex` row, its `Contributions/` note name and every `[[OldFolder/` link prefix (the TasksArchive's project lines included). |
 | `dup-name` | Two notes share a name vault-wide. If the other copy is under `Archived/`, `git rm` the archived copy — Archived is expendable, and it is the one making links ambiguous. Otherwise rename the less-linked note to something more specific, as for `bad-name`. |
-| `root-stray` | A plan, roadmap or guide → move into `Playbooks/` or `Research/` with the right `type:` and name. A `Home.md` or other duplicate of `Overview.md` → merge anything unique into the Overview, then `git rm` it. A CV summary → `Contributions/` (merge into the project's existing summary if there is one). |
+| `root-stray` | A plan, roadmap or guide → move into `Playbooks/` or `Research/` with the rename script, then set the right `type:`. A `Home.md` or other duplicate of `Overview.md` → merge anything unique into the Overview, then `git rm` it. A CV summary → `Contributions/` (merge into the project's existing summary if there is one). |
 | `legacy-name` | A pre-2.0 name. A generated index (`Topic Index.md` and the like) → `git rm` it; the hook regenerates it under its new name. Anything else → rename as for `bad-name`. |
 | `unclosed-thread` | Close the thread as in "Closing a thread" in [structure.md](../manage-project-workspaces/reference/structure.md): move decisions, durable knowledge and leftover items to their own notes, then reduce it to the closing stub. Leftover items that fit nowhere go in the report for the user to decide on — never drop them silently. |
 | `missing-section` | Add the section the template requires: `## Next up` in an Overview (seed it from open threads and the newest log), `## TL;DR` in research, the playbook headings in a playbook. |

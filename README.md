@@ -158,7 +158,7 @@ Each type has a template, a naming pattern and — for the short types — a wor
 
 **Time tracking is optional, per project, and only on request.** `TimeTracking.md` is a phases table (estimate vs actual hours, variance, sittings, dates, links) plus a weekly-hours table. `scripts/session_hours.py` measures active hours from Claude Code transcripts; see [`time-tracking.md`](skills/manage-project-workspaces/reference/time-tracking.md).
 
-`hooks/vault_maintain.py --lint <vault>` reports every note that breaks the contract, without changing anything; `condense-vault` works through the findings.
+`hooks/vault_maintain.py --lint <vault>` reports every note that breaks the contract, without changing anything; `condense-vault` works through the findings. Renames go through `scripts/rename_note.py`, which moves a note and rewrites every link and supersession reference to it.
 
 ### Workspace layout
 
