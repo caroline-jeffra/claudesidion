@@ -14,6 +14,23 @@ are minor.
 
 ## [Unreleased]
 
+## [2.2.0] — 2026-10-14
+
+### Fixed
+
+- **Links to log days and structural files no longer point at another project's notes.** Log dates (`2026-10-01`) and structural files (`Overview`, `ProgressLog`, the indexes) repeat in every workspace by design, but the generated indexes linked them bare, and the skills allowed bare links "because Obsidian resolves same-folder first". That rule rarely applies: `ProgressLog.md` and the indexes sit in the workspace root, not in `Log/`, so Obsidian bound those links by its own tie-break, often to another workspace's day. Foam and other viewers refuse to resolve them at all. The generated indexes now write the shortest path that names exactly one note (`[[Alpha/Log/2026-10-01|2026-10-01]]`), and stay bare when a name is unique.
+- **`rename_note.py` no longer rewrites another workspace's links.** A path-qualified link such as `[[Log/2026-10-05]]` in workspace B was rewritten when a same-named note in workspace A was renamed, because any link whose folder matched the end of A's path counted as a match. Links are now matched the way a viewer resolves them, by the end of the note's path, and an ambiguous one is rewritten only inside the renamed note's workspace. Rewritten links use the shortest path that names only the moved note.
+- **`rename_note.py` moves an untracked note in a versioned vault.** `git mv` refused it after the links had already been rewritten, leaving them pointing at a file that never moved.
+
+### Added
+
+- **`ambiguous-link` lint finding** for a bare log-date or structural-file link that names notes in more than one workspace. Link resolution in the lint is now case-insensitive, matching every viewer.
+- **`scripts/qualify_links.py`** — fixes `ambiguous-link` in bulk. Each ambiguous link is resolved against the workspace of the note that contains it and rewritten to that note's shortest unique path, keeping its displayed text as an alias (escaped inside tables). Code, embeds, notes outside workspaces and `Archived/` are untouched; a link with no single candidate in its own workspace is reported, not guessed. `--dry-run` reports the count. `condense-vault` runs it for `ambiguous-link` findings.
+
+### Changed
+
+- **Linking rule:** write the shortest path that names exactly one note. Structural files are always prefixed with the workspace, even from inside it, and log days are prefixed whenever another workspace logged the same date. The templates show the qualified forms.
+
 ## [2.1.0] — 2026-10-12
 
 ### Added

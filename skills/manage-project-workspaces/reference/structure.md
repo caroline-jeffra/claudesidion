@@ -132,15 +132,15 @@ Templates for every type are in [templates.md](templates.md).
 
 ## Linking between notes
 
-`[[name]]` is resolved by Obsidian searching the vault, so how you write a link depends on whether the name is unique.
+`[[target]]` names every note whose vault path ends with `target`, compared case-insensitively — Obsidian, Foam, Quartz and the markdown language servers all agree on that. **Write the shortest path that names exactly one note.**
 
 | Target | Write | Why |
 | --- | --- | --- |
-| A note in any type folder | `[[note-name]]` | One note per fact means names are unique; a bare link survives a workspace rename |
-| `Overview`, `ProgressLog`, or any generated index | `[[Workspace/Overview]]` | These exist once per workspace by design, so the bare name is ambiguous vault-wide |
-| The current workspace's own structural file, linked from inside it | `[[Overview]]` is fine | Obsidian resolves same-folder first |
+| A note in any type folder | `[[NoteName]]` | One note per fact means names are unique; a bare link survives a workspace rename |
+| `Overview`, `ProgressLog`, or any generated index | `[[Workspace/Overview]]`, even from inside that workspace | These exist once per workspace by design, so the bare name is ambiguous vault-wide |
+| A log day whose date another workspace also logged | `[[Workspace/Log/2026-10-04\|2026-10-04]]` | Workspaces often log the same day; the alias keeps the date readable |
 
-Obsidian has **no `../` syntax** for wikilinks — a vault-relative path is the only disambiguator.
+Wikilinks have **no `../` syntax** — a vault-relative path is the only disambiguator. There is no same-folder exception: viewers disagree on tie-breaks, so an ambiguous link is wrong even where it happens to land right. The lint reports one as `ambiguous-link`; `scripts/qualify_links.py` fixes them in bulk.
 
 **The failure this prevents.** A bare `[[Decisions]]` resolved against the whole vault binds to whichever workspace matches first. It resolves *successfully*, so "do the links work?" reports healthy while the link points at a different project's notes. Silent cross-project links are worse than broken ones: a broken link is noticed, a wrong one is trusted.
 
@@ -268,7 +268,7 @@ The user says "this replaces our old decision that X", but no note records X. **
 `ProgressLog.md` in the root is an **index**: one line per working day, newest first.
 
 ```markdown
-- **[[2026-08-19]]** — ACME-1656 billing joins landed
+- **[[Takeoffs/Log/2026-08-19|2026-08-19]]** — ACME-1656 billing joins landed
 ```
 
 The detail lives in `Log/2026-08-19.md`: **one** `Did` / `Decided` / `Learned` block for the whole day. A second close-out on the same day **merges into those sections** — it never adds a second block, a `###` sub-entry, or a correction of an earlier line. If something said earlier that day is now wrong, fix the line.

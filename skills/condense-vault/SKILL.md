@@ -28,7 +28,7 @@ The format rules are in [manage-project-workspaces/reference/structure.md](../ma
 python3 "<plugin root>/scripts/rename_note.py" "<old vault-relative path>" "<new vault-relative path>"
 ```
 
-Add `--dry-run` to see how many links a rename would rewrite. A name that another note elsewhere in the vault shares is rewritten bare only inside the renamed note's own workspace, so links that meant the other note are left alone.
+Add `--dry-run` to see how many links a rename would rewrite. A link whose target also names another note is rewritten only inside the renamed note's own workspace, so links that meant the other note are left alone. Rewritten links use the shortest path that names only the moved note.
 
 **Get the findings from the lint.** It ships with the plugin at `../../hooks/vault_maintain.py` relative to this skill's base directory:
 
@@ -45,6 +45,7 @@ Each line is `<workspace>/<path>: <code> — <detail>`. Work through them by cod
 | `over-budget` | Rewrite the note to its template: cut process narrative, dates on ticked items, commit SHAs and restated context; link out to the note that owns a fact. If it still will not fit, it is two notes — split it. |
 | `stale-link` | A current-state note links a superseded decision or a finished thread. Repoint to the successor (`superseded_by`), or delete the line if it only existed to point at finished work. |
 | `broken-link` | Find where the target went (`git log --diff-filter=DR --name-status -- '*<name>*'`). Renamed → repoint. Deleted → remove the link, keeping the plain text only if the sentence still needs it. |
+| `ambiguous-link` | A bare log date or structural-file link (`[[2026-10-01]]`, `[[Overview]]`) that names a note in several workspaces. Run `python3 "<plugin root>/scripts/qualify_links.py"` once (add `--dry-run` first to see the count): it rewrites each to the copy in the linking note's own workspace, keeping the displayed text (`[[Alpha/Log/2026-10-01\|2026-10-01]]`). Fix any link it reports as unresolved by hand. |
 | `index-link` | Replace the link to an index with a link to the specific note it meant. |
 | `bad-name` | Rename to PascalCase per the naming table with the rename script, keeping the `# Heading` as the readable form; it rewrites the links. A **workspace folder** rename also updates its `WorkspaceIndex` row, its `Contributions/` note name and every `[[OldFolder/` link prefix (the TasksArchive's project lines included). |
 | `dup-name` | Two notes share a name vault-wide. If the other copy is under `Archived/`, `git rm` the archived copy — Archived is expendable, and it is the one making links ambiguous. Otherwise rename the less-linked note to something more specific, as for `bad-name`. |

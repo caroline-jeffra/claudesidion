@@ -118,6 +118,21 @@ try:
     check("[[shared-name]]" in beta, "bare link in another workspace keeps meaning its own note", beta)
     check("[[AlphaSharedName]]" in beta, "path-qualified link from another workspace is rewritten", beta)
 
+    section("A path-qualified link into another workspace's same-named folder is left alone")
+    write(v / "Projects/Alpha/Log/2026-10-05.md", "# Alpha day\n")
+    write(v / "Projects/Beta/Log/2026-10-05.md", "# Beta day\n")
+    write(v / "Projects/Beta/ProgressLog.md", "- [[Log/2026-10-05]] and [[2026-10-05]]\n")
+    write(v / "Projects/Alpha/ProgressLog.md", "- [[Log/2026-10-05]]\n")
+    rn.rename(v, "Projects/Alpha/Log/2026-10-05.md", "Projects/Alpha/Log/2026-10-06.md")
+    beta_log = (v / "Projects/Beta/ProgressLog.md").read_text()
+    check(beta_log == "- [[Log/2026-10-05]] and [[2026-10-05]]\n",
+          "Beta's [[Log/...]] still means Beta's own log", beta_log)
+    check("[[2026-10-06]]" in (v / "Projects/Alpha/ProgressLog.md").read_text(),
+          "Alpha's own link follows the rename, bare once the date is unique")
+    rn.rename(v, "Projects/Alpha/Log/2026-10-06.md", "Projects/Alpha/Log/2026-10-05.md")
+    check("[[Alpha/Log/2026-10-05]]" in (v / "Projects/Alpha/ProgressLog.md").read_text(),
+          "a rename onto a shared name writes the shortest unique path")
+
     section("Moving between folders")
     rn.rename(v, "Projects/Alpha/Decisions/UseNewHost.md", "Projects/Alpha/Playbooks/NewHostPlaybook.md")
     check((v / "Projects/Alpha/Playbooks/NewHostPlaybook.md").is_file(), "target folder is created")

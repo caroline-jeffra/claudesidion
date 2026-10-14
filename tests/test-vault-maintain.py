@@ -575,6 +575,59 @@ finally:
     shutil.rmtree(tmp6, ignore_errors=True)
 
 # ---------------------------------------------------------------------------
+section("Links: generated and linted links name exactly one note")
+# ---------------------------------------------------------------------------
+
+tmp7 = Path(tempfile.mkdtemp(prefix="claudesidion-vm-tests."))
+try:
+    for proj in ("Alpha", "Beta"):
+        w = tmp7 / "Projects" / proj
+        write(w / ".vault-config.json", json.dumps({
+            "project": proj.lower(),
+            "topics": {"cache": {"name": "Cache", "patterns": ["cache"]}},
+        }))
+        write(w / "Overview.md", f"---\ntype: overview\nstatus: active\n---\n\n# {proj}\n\n## Next up\n\n- x\n")
+        # Both workspaces logged 2026-10-01; only Alpha logged 2026-10-02.
+        write(w / "Log" / "2026-10-01.md",
+              "---\ntype: log\ndate: 2026-10-01\n---\n\n# 2026-10-01\n\n- **Did:** cache cache cache\n")
+    alpha = tmp7 / "Projects" / "Alpha"
+    write(alpha / "Log" / "2026-10-02.md",
+          "---\ntype: log\ndate: 2026-10-02\n---\n\n# 2026-10-02\n\n- **Did:** cache cache cache\n")
+    write(alpha / "Threads" / "WarmTheCache.md",
+          "---\ntype: thread\nstatus: open\n---\n\n# Warm the cache\n\n- [ ] cache cache cache\n")
+    write(alpha / "ProgressLog.md",
+          "---\ntype: log-index\nstatus: reference\n---\n\n# Progress log\n\n"
+          "- **[[2026-10-02]]** — unique\n- **[[2026-10-01]]** — ambiguous\n"
+          "- **[[Alpha/Log/2026-10-01|2026-10-01]]** — qualified\n- [[warmthecache]] by case\n")
+
+    run_maintain(tmp7)
+    topic = (alpha / "TopicIndex.md").read_text()
+    check("[[Alpha/Log/2026-10-01|2026-10-01]]" in topic,
+          "a log date another workspace shares is linked by its workspace path", topic)
+    check("[[2026-10-02]]" in topic, "a unique log date stays bare", topic)
+    check("[[WarmTheCache|Warm the cache]]" in topic or "[[WarmTheCache]]" in topic,
+          "a unique note stays bare", topic)
+    threads = (alpha / "ThreadsIndex.md").read_text()
+    check("[[WarmTheCache|Warm the cache]]" in threads, "thread index link is bare and titled", threads)
+
+    findings = lint_vault(tmp7)
+    amb = [f for f in findings if f.startswith("Projects/Alpha/ProgressLog.md: ambiguous-link")]
+    check(len(amb) == 1 and "[[2026-10-01]]" in amb[0] and "2026-10-02" not in amb[0]
+          and "Alpha/Log" not in amb[0],
+          "ambiguous-link names only the bare shared date", "\n".join(findings))
+    check(not any("broken-link" in f and "warmthecache" in f for f in findings),
+          "links resolve case-insensitively, as every viewer does", "\n".join(findings))
+    check(not any("ambiguous-link" in f for f in findings if "TopicIndex" in f or "Index.md" in f),
+          "generated indexes are never ambiguous")
+
+    names = vm.VaultNames.scan(tmp7)
+    check(names.matches("2026-10-01") == 2 and names.matches("Alpha/Log/2026-10-01") == 1
+          and names.matches("log/2026-10-02") == 1,
+          "matches counts notes by path suffix, case-insensitively")
+finally:
+    shutil.rmtree(tmp7, ignore_errors=True)
+
+# ---------------------------------------------------------------------------
 print()
 if not FAIL:
     print(f"\033[32m{PASS} passed\033[0m")

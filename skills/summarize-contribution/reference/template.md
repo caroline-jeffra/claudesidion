@@ -146,5 +146,5 @@ about the user's involvement. Keeps the document's own provenance without clutte
 
 ### `## Related notes`
 
-Links into the workspace: `[[Overview]]`, the progress log, decisions, open threads. Keeps the
+Links into the workspace: `[[<Workspace>/Overview]]`, the progress log, decisions, open threads. Keeps the
 summary lean — detail stays at its source.
