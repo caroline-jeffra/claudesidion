@@ -100,7 +100,7 @@ status: active
 
 ## Map
 
-- [[ProgressLog]] · [[TopicIndex]] · [[DecisionsIndex]] · [[ThreadsIndex]]
+- [[<Workspace>/ProgressLog|ProgressLog]] · [[<Workspace>/TopicIndex|TopicIndex]] · [[<Workspace>/DecisionsIndex|DecisionsIndex]] · [[<Workspace>/ThreadsIndex|ThreadsIndex]]
 ```
 
 `## Next up` is **the only place next work is stated** in a workspace. Each bullet names one action and links the thread or playbook holding the detail.
@@ -119,7 +119,7 @@ status: reference
 
 One line per working day. Detail lives in the dated note.
 
-- **[[YYYY-MM-DD]]** — <one-line headline of the day, ≤ 12 words>
+- **[[<Workspace>/Log/YYYY-MM-DD|YYYY-MM-DD]]** — <one-line headline of the day, ≤ 12 words>
 ```
 
 ## Log — `Log/YYYY-MM-DD.md`
@@ -306,7 +306,7 @@ tickets: []
 
 **Rejected:** <alternative> — <one-line reason>; <alternative> — <reason>
 
-**Source:** [[YYYY-MM-DD]] <or the research note it came from>
+**Source:** [[<Workspace>/Log/YYYY-MM-DD|YYYY-MM-DD]] <or the research note it came from>
 ```
 
 A **convention** uses the same shape with `type: convention`, no `decided:`, and `**Rule:**` in place of `**Decision:**`.
@@ -350,9 +350,9 @@ tracked_through: YYYY-MM-DD
 
 | Phase | Status | Estimate | Actual | Variance | Sittings | Dates | Links |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Planning | done | — | 3.37 | — | 8 | 08-15 | [[2026-08-15]] |
+| Planning | done | — | 3.37 | — | 8 | 08-15 | [[Takeoffs/Log/2026-08-15\|2026-08-15]] |
 | **0 Walking skeleton** | done | 12 | 7.89 | −34% | 6 | 08-16 → 08-19 | [[WalkingSkeletonPlaybook]] |
-| 0.1–0.5 Scaffold and CI | done | 4 | 2.25 | −44% | 1 | 08-16 | [[2026-08-16]] |
+| 0.1–0.5 Scaffold and CI | done | 4 | 2.25 | −44% | 1 | 08-16 | [[Takeoffs/Log/2026-08-16\|2026-08-16]] |
 | **1 Data model and CRUD** | active | 25 | 11.13 | — | 13 | 08-23 → | [[DataModelAndCrudPlaybook]] |
 | **Total** | | 165 | 22.39 | | 28 | | |
 

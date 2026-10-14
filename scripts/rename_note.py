@@ -15,12 +15,16 @@ What it rewrites, in every note outside `Archived/` and dot-directories:
 
 Two rules keep it from rewriting links that meant a different note:
 
-  * If another note anywhere in the vault shares the old name, a bare `[[Old]]` is rewritten only
-    inside the renamed note's own workspace (`Projects/<name>/`); elsewhere it may mean the other one.
-  * A path-qualified link is rewritten only when its path names the renamed note's folder or its
-    workspace. Links to non-structural notes become bare, since the new name is unique.
+  * A link is rewritten only when it names the renamed note: its target is the end of that note's
+    path (`[[Old]]`, `[[Log/Old]]`, `[[Alpha/Log/Old]]`), or its path is the note's folder or
+    workspace (`[[Alpha/Old]]`).
+  * If that target also names another note, the link is rewritten only inside the renamed note's
+    own workspace (`Projects/<name>/`); elsewhere it may mean the other one.
 
-The file is moved with `git mv` in a versioned vault, a plain move otherwise. Concurrent callers
+Every rewritten link uses the shortest path that names the moved note and no other — bare when the
+new name is unique, `[[Alpha/Log/2026-10-01]]` when it is not.
+
+The file is moved with `git mv` when git tracks it, a plain move otherwise. Concurrent callers
 are serialised with a lock, so parallel runs never interleave read-modify-write on one note.
 Fails closed: a missing source or an existing target changes nothing.
 """
@@ -37,11 +41,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Names that exist once per workspace by design: links to them keep their workspace prefix.
-STRUCTURAL = {
-    "Overview", "ProgressLog", "TopicIndex", "TicketsIndex", "DecisionsIndex", "ThreadsIndex",
-    "TimeTracking", "WorkspaceIndex",
-}
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "hooks"))
+
+from vault_maintain import shortest_ref, suffix_counts  # noqa: E402
+
 SUPERSESSION_KEYS = ("supersedes", "superseded_by")
 
 
@@ -67,6 +70,13 @@ def is_versioned(vault: Path) -> bool:
     r = subprocess.run(["git", "-C", str(vault), "rev-parse", "--is-inside-work-tree"],
                        capture_output=True, text=True)
     return r.returncode == 0 and r.stdout.strip() == "true"
+
+
+def is_tracked(vault: Path, rel: str) -> bool:
+    """`git mv` refuses an untracked file — after the links are already rewritten — so check first."""
+    r = subprocess.run(["git", "-C", str(vault), "ls-files", "--error-unmatch", "--", rel],
+                       capture_output=True, text=True)
+    return r.returncode == 0
 
 
 def notes(vault: Path):
@@ -117,6 +127,19 @@ def rename(vault: Path, old: str, new: str, dry_run: bool = False) -> tuple[int,
     shared = any(p != src for p in vault.rglob(src.name)
                  if not any(x.startswith(".") for x in p.relative_to(vault).parts))
 
+    # Every note the vault's links can resolve to — Archived/ included, since links still reach it.
+    paths = {
+        r.with_suffix("").as_posix()
+        for r in (p.relative_to(vault) for p in vault.rglob("*.md"))
+        if not any(x.startswith(".") for x in r.parts)
+    }
+    old_rel, new_rel = rel.with_suffix("").as_posix(), Path(new).with_suffix("").as_posix()
+    new_ref = shortest_ref(new_rel, suffix_counts((paths - {old_rel}) | {new_rel}))
+
+    def named_by(target: str) -> list[str]:
+        t = target.lower()
+        return [p for p in paths if p.lower() == t or p.lower().endswith("/" + t)]
+
     # Path prefixes that can only mean this note: its own folder, and its workspace root.
     folders = [str(rel.parent)] + ([str(ws)] if ws else [])
     prefixes = set()
@@ -135,12 +158,14 @@ def rename(vault: Path, old: str, new: str, dry_run: bool = False) -> tuple[int,
         def sub(m: re.Match) -> str:
             nonlocal links
             pre = m.group(1)
-            if pre and not any(x.endswith(pre) for x in prefixes):
-                return m.group(0)
-            if not pre and shared and not in_ws:
-                return m.group(0)
+            if pre not in prefixes:
+                # Resolve the link the way a viewer does: by the end of the note's path. A
+                # `[[Log/x]]` written in another workspace means that workspace's log, not this one.
+                hits = named_by(pre + old_name)
+                if old_rel not in hits or (len(hits) > 1 and not in_ws):
+                    return m.group(0)
             links += 1
-            return "[[" + (pre if new_name in STRUCTURAL else "") + new_name
+            return "[[" + new_ref
 
         out = link.sub(sub, text)
         if not shared or in_ws:
@@ -154,7 +179,7 @@ def rename(vault: Path, old: str, new: str, dry_run: bool = False) -> tuple[int,
     for p, out in pending:
         p.write_text(out, encoding="utf-8")
     dst.parent.mkdir(parents=True, exist_ok=True)
-    if is_versioned(vault):
+    if is_versioned(vault) and is_tracked(vault, old):
         subprocess.run(["git", "-C", str(vault), "mv", old, new], check=True, capture_output=True)
     else:
         src.rename(dst)

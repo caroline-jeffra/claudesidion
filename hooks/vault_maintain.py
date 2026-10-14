@@ -35,6 +35,7 @@ import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 # ---------------------------------------------------------------- frontmatter
 
@@ -305,6 +306,11 @@ class Note:
     changed: bool = False
 
 
+# Turns a note into the link target the indexes write for it: the shortest path that names it
+# and no other note in the vault.
+Refs = Callable[[Note], str]
+
+
 def as_list(v: object) -> list[str]:
     if isinstance(v, list):
         return [str(x) for x in v]
@@ -493,7 +499,7 @@ def write_if_changed(path: Path, content: str) -> bool:
     return True
 
 
-def build_topic_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
+def build_topic_index(root: Path, cfg: Config, notes: list[Note], ref: Refs) -> bool:
     by_topic: dict[str, list[Note]] = defaultdict(list)
     for n in notes:
         if n.doctype in cfg.generated_types:
@@ -566,18 +572,18 @@ def build_topic_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
             items = sorted(buckets[doctype], key=lambda n: n.name.lower())
             if doctype == "log":
                 days = " · ".join(
-                    f"[[{n.name}]]" for n in sorted(items, key=lambda x: x.name, reverse=True)
+                    wikilink(ref(n), n.name) for n in sorted(items, key=lambda x: x.name, reverse=True)
                 )
                 lines += [f"**Log days** ({len(items)}) — {days}", ""]
                 continue
             lines += [f"**{label(doctype, len(items))}** ({len(items)})", ""]
-            lines += [f"- [[{n.name}]]" for n in items]
+            lines += [f"- {wikilink(ref(n), n.name)}" for n in items]
             lines.append("")
 
     return write_if_changed(root / "TopicIndex.md", "\n".join(lines))
 
 
-def build_ticket_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
+def build_ticket_index(root: Path, cfg: Config, notes: list[Note], ref: Refs) -> bool:
     pattern = re.compile(r"^([A-Z]{2,}-\d+)\b")
     by_ticket: dict[str, list[Note]] = defaultdict(list)
     for n in notes:
@@ -616,11 +622,11 @@ def build_ticket_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
         uniq = {n.name: n for n in by_ticket[t]}.values()
         group = sorted(uniq, key=lambda n: (TYPE_RANK.get(n.doctype, 9), n.name.lower()))
         own = owned.get(t)
-        head = f"**[[{own.name}|{t}]]**" if own else f"`{t}`"
+        head = f"**{wikilink(ref(own), t)}**" if own else f"`{t}`"
         refs = [n for n in group if n is not own]
         docs = [n for n in refs if n.doctype != "log"]
         logs = [n for n in refs if n.doctype == "log"]
-        bits = [f"[[{n.name}]]" for n in docs[:6]]
+        bits = [wikilink(ref(n), n.name) for n in docs[:6]]
         if logs:
             bits.append(f"{len(logs)} log day{'s' if len(logs) != 1 else ''}")
         lines.append(f"- {head}" + (" — " + ", ".join(bits) if bits else ""))
@@ -628,7 +634,12 @@ def build_ticket_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
     return write_if_changed(root / "TicketsIndex.md", "\n".join(lines))
 
 
-def link(n: Note) -> str:
+def wikilink(ref: str, text: str) -> str:
+    """`[[ref]]`, or `[[ref|text]]` when the display text differs from the target."""
+    return f"[[{ref}|{text}]]" if text and text != ref else f"[[{ref}]]"
+
+
+def link(n: Note, ref: Refs) -> str:
     """A wikilink carrying a readable display title.
 
     Note names are slugs, so a bare `[[slug]]` renders as `bert-9534-lefty-offers-...`.
@@ -640,7 +651,7 @@ def link(n: Note) -> str:
             if line.startswith("# "):
                 title = line[2:].strip()
                 break
-    return f"[[{n.name}|{title}]]" if title and title != n.name else f"[[{n.name}]]"
+    return wikilink(ref(n), title or n.name)
 
 
 def open_items(n: Note) -> int:
@@ -652,7 +663,7 @@ def open_items(n: Note) -> int:
     return len(re.findall(r"^\s*[-*]\s+\[ \]", n.body, re.MULTILINE))
 
 
-def build_thread_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
+def build_thread_index(root: Path, cfg: Config, notes: list[Note], ref: Refs) -> bool:
     """Threads and active playbooks, open work first.
 
     This is the file `manage-project-workspaces` reads to answer "what's next", so ordering is
@@ -697,19 +708,19 @@ def build_thread_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
             count = open_items(n)
             head = f"**{count} open**" if count else f"_{n.meta.get('status', 'open')}_"
             kind = " _(playbook)_" if n.doctype == "playbook" else ""
-            lines.append(f"- {head} — {link(n)}{kind}")
+            lines.append(f"- {head} — {link(n, ref)}{kind}")
         lines.append("")
 
     if finished:
         lines.append("## Closed")
         lines.append("")
-        lines += [f"- {link(n)}" for n in finished]
+        lines += [f"- {link(n, ref)}" for n in finished]
         lines.append("")
 
     return write_if_changed(root / "ThreadsIndex.md", "\n".join(lines))
 
 
-def build_decision_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
+def build_decision_index(root: Path, cfg: Config, notes: list[Note], ref: Refs) -> bool:
     """Decisions and conventions, grouped by whether they are still in force.
 
     Superseded decisions are listed, never hidden: the record of what was true before is
@@ -757,7 +768,7 @@ def build_decision_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
             # the only link back to the work that prompted it.
             tickets = as_list(n.meta.get("tickets"))
             refs = f" · {', '.join(tickets)}" if tickets else ""
-            lines.append(f"- {stamp}{link(n)}{tail}{refs}")
+            lines.append(f"- {stamp}{link(n, ref)}{tail}{refs}")
         lines.append("")
 
     if conventions:
@@ -765,7 +776,7 @@ def build_decision_index(root: Path, cfg: Config, notes: list[Note]) -> bool:
         lines.append("")
         for n in sorted(conventions, key=lambda n: n.name.lower()):
             tail = " _(superseded)_" if str(n.meta.get("status", "")).lower() == "superseded" else ""
-            lines.append(f"- {link(n)}{tail}")
+            lines.append(f"- {link(n, ref)}{tail}")
         lines.append("")
 
     return write_if_changed(root / "DecisionsIndex.md", "\n".join(lines))
@@ -886,9 +897,16 @@ def hard_wraps(prose: str) -> int:
 
 @dataclass
 class VaultNames:
-    """Every markdown note in the vault, for resolving links across workspaces."""
+    """Every markdown note in the vault, for resolving links across workspaces.
+
+    Resolution follows the rule every wikilink tool shares (Obsidian, Foam, Quartz, Markdown
+    Oxide): a target names the notes whose vault-relative path ends with it, compared
+    case-insensitively. One match resolves; two or more is ambiguous, and what an ambiguous link
+    binds to differs by tool — Obsidian's own tie-break picks one silently.
+    """
     stems: dict[str, list[str]]              # stem -> vault-relative paths holding it
     paths: set[str]                          # vault-relative, no `.md`
+    suffixes: Counter = field(default_factory=Counter)   # lower-cased path suffix -> notes ending so
 
     @classmethod
     def scan(cls, vault: Path) -> "VaultNames":
@@ -900,14 +918,39 @@ class VaultNames:
                 continue
             stems[p.stem].append(rel.as_posix())
             paths.add(rel.with_suffix("").as_posix())
-        return cls(dict(stems), paths)
+        return cls(dict(stems), paths, suffix_counts(paths))
+
+    def matches(self, target: str) -> int:
+        """How many notes a link target names."""
+        return self.suffixes.get(target.strip("/").lower(), 0)
 
     def resolves(self, target: str) -> bool:
         """Whether a link target names some note — bare by stem, or by a trailing path."""
-        if "/" not in target:
-            return target in self.stems
-        t = target.strip("/")
-        return any(p == t or p.endswith("/" + t) for p in self.paths)
+        return self.matches(target) > 0
+
+    def ref(self, path: Path, vault: Path) -> str:
+        """The shortest link target that names this note and no other."""
+        return shortest_ref(path.relative_to(vault).with_suffix("").as_posix(), self.suffixes)
+
+
+def suffix_counts(paths) -> Counter:
+    """For every note path, count each of its trailing path segments (`a/b/c` -> `c`, `b/c`, `a/b/c`)."""
+    counts: Counter = Counter()
+    for p in paths:
+        parts = p.lower().split("/")
+        for i in range(len(parts)):
+            counts["/".join(parts[i:])] += 1
+    return counts
+
+
+def shortest_ref(rel: str, suffixes: Counter) -> str:
+    """The shortest trailing part of `rel` (vault-relative, no `.md`) that names only that note."""
+    parts = rel.split("/")
+    for i in range(len(parts) - 1, -1, -1):
+        cand = "/".join(parts[i:])
+        if suffixes.get(cand.lower(), 0) <= 1:
+            return cand
+    return rel
 
 
 def pascal_problem(name: str) -> str | None:
@@ -1044,6 +1087,20 @@ def lint(root: Path, cfg: Config, notes: list[Note], names: VaultNames, vault: P
                 ref = ref.strip().strip("[]")
                 if ref and not names.resolves(ref):
                     report(n, "broken-link", f"frontmatter {key}: {ref} — no note has that name")
+        # A link that names several notes binds to whichever one the viewer picks — Obsidian
+        # silently picks one, Foam asks. Only names that repeat by design are reported here: a
+        # log date or a structural file. Any other repeated name is a dup-name finding, and
+        # renaming the duplicate settles every link to it at once.
+        ambiguous = sorted({
+            t for t in targets
+            if names.matches(t) > 1
+            and (LOG_NAME.match(t.split("/")[-1]) or t.split("/")[-1] in ROOT_FILES)
+        })
+        if ambiguous:
+            report(n, "ambiguous-link", ", ".join(f"[[{t}]]" for t in ambiguous[:5])
+                   + (f" (+{len(ambiguous) - 5} more)" if len(ambiguous) > 5 else "")
+                   + " — each names a note in more than one workspace; qualify it with its workspace path "
+                   "(scripts/qualify_links.py does this)")
         if broken:
             report(n, "broken-link", ", ".join(f"[[{t}]]" for t in broken[:5])
                    + (f" (+{len(broken) - 5} more)" if len(broken) > 5 else ""))
@@ -1088,7 +1145,9 @@ def lint(root: Path, cfg: Config, notes: list[Note], names: VaultNames, vault: P
 # ---------------------------------------------------------------- main
 
 
-def maintain(root: Path) -> list[str]:
+def maintain(root: Path, names: VaultNames | None = None, vault: Path | None = None) -> list[str]:
+    """Refresh one workspace. `names` is the whole vault's, so generated links stay unambiguous
+    across workspaces; without it the workspace is treated as the whole vault."""
     cfg_path = root / ".vault-config.json"
     if not cfg_path.is_file():
         return []
@@ -1098,14 +1157,20 @@ def maintain(root: Path) -> list[str]:
     if not notes:
         return []
 
+    if names is None or vault is None:
+        vault, names = root, VaultNames.scan(root)
+
+    def ref(n: Note) -> str:
+        return names.ref(n.path, vault)
+
     messages = refresh_metadata(notes, cfg)
-    if build_topic_index(root, cfg, notes):
+    if build_topic_index(root, cfg, notes, ref):
         messages.append("TopicIndex.md regenerated")
-    if build_ticket_index(root, cfg, notes):
+    if build_ticket_index(root, cfg, notes, ref):
         messages.append("TicketsIndex.md regenerated")
-    if build_thread_index(root, cfg, notes):
+    if build_thread_index(root, cfg, notes, ref):
         messages.append("ThreadsIndex.md regenerated")
-    if build_decision_index(root, cfg, notes):
+    if build_decision_index(root, cfg, notes, ref):
         messages.append("DecisionsIndex.md regenerated")
     return messages
 
@@ -1228,9 +1293,14 @@ def main() -> int:
             return 0
 
     total: list[str] = []
+    try:
+        names = VaultNames.scan(vault)
+    except Exception as exc:                           # noqa: BLE001 - fail open
+        print(f"vault-maintain: {exc}", file=sys.stderr)
+        return 0
     for ws in find_workspaces(vault):
         try:
-            msgs = maintain(ws)
+            msgs = maintain(ws, names, vault)
         except Exception as exc:                       # noqa: BLE001 - fail open
             print(f"vault-maintain: {ws.name}: {exc}", file=sys.stderr)
             continue

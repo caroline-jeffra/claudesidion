@@ -280,21 +280,26 @@ respected.
 
 ### How to write a wikilink
 
-Obsidian resolves a bare `[[name]]` by searching the vault, so the rule follows from whether the
-name is unique.
+Every markdown viewer resolves `[[target]]` the same way: it names each note whose vault path ends
+with `target`. One match is a link; two or more is ambiguous, and viewers disagree about what an
+ambiguous link means — Obsidian silently picks one, often another project's, and Foam refuses to.
+So the rule is: **write the shortest path that names exactly one note.**
 
-- **A uniquely-named note → link it bare.** `[[UseTokenBucketOverFixedWindow]]`, `[[2026-09-07]]`.
+- **A uniquely-named note → link it bare.** `[[UseTokenBucketOverFixedWindow]]`.
   This is the normal case in a structured workspace: one note per fact gives PascalCase names that
   are naturally unique. A bare link is readable and survives the workspace being renamed or moved.
-- **A per-workspace structural file → always prefix it with the workspace.**
-  `[[Takeoffs/Overview]]`, `[[Takeoffs/ProgressLog]]`, `[[Takeoffs/DecisionsIndex]]`. These
-  names — `Overview`, `ProgressLog`, `TopicIndex`, `TicketsIndex`, `ThreadsIndex`,
-  `DecisionsIndex`, `TimeTracking` — exist once per workspace **by design**, so a bare link to one is ambiguous
-  across the vault.
+- **A per-workspace structural file → always prefix it with the workspace**, even from inside that
+  workspace. `[[Takeoffs/Overview]]`, `[[Takeoffs/ProgressLog]]`, `[[Takeoffs/DecisionsIndex]]`.
+  These names — `Overview`, `ProgressLog`, `TopicIndex`, `TicketsIndex`, `ThreadsIndex`,
+  `DecisionsIndex`, `TimeTracking` — exist once per workspace **by design**, so a bare link to one
+  is ambiguous across the vault.
+- **A log day → prefix it with the workspace's `Log/` path when the date is not unique**, and show
+  the date: `[[Takeoffs/Log/2026-10-04|2026-10-04]]`. Several workspaces often log the same day.
+  The `vault-maintain` lint reports a bare one as `ambiguous-link`.
 
-The exception that makes the second rule bearable: **inside a workspace, linking to that workspace's
-own structural file may stay bare** — Obsidian resolves same-folder first. Prefix whenever the link
-crosses a workspace boundary, and whenever you are writing from outside `Projects/` at all.
+There is **no same-folder exception.** A bare `[[Overview]]` in a workspace's own notes is still
+ambiguous, and it is often written from a different folder (`ProgressLog.md` links into `Log/`), so
+even Obsidian's same-folder preference does not apply.
 
 **Never disambiguate by rewriting a bare link to a vault-wide search result.** A `[[Decisions]]`
 looked up across the whole vault binds to whichever workspace matches first, and the result *resolves
@@ -303,7 +308,7 @@ is corrupted provenance, and it is harder to spot than a broken link. If a bare 
 resolve it against the file that contains it, not against the vault.
 
 Cross-link between notes and to general `[[notes]]` (from the `capture-notes` skill) so the
-workspace stays navigable in Obsidian's graph.
+workspace stays navigable in the vault's graph.
 
 ## When the vault contradicts these instructions
 
