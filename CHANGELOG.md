@@ -14,6 +14,13 @@ are minor.
 
 ## [Unreleased]
 
+## [2.4.0] — 2026-10-15
+
+### Added
+
+- **Stale-session guard.** Hooks load when a session starts, so a session begun before a plugin upgrade ran the old maintainer at exit and regenerated indexes in the old format — on 2026-10-12 that brought back 44 pre-2.0 index files. Each session start now records the plugin version in `Projects/.claudesidion-version` (committed with the session, so other machines see it), and a maintenance run older than the recorded version writes nothing. A session start on an out-of-date install is told to update. The guard protects upgrades from 2.4.0 on; hooks from earlier releases do not read the record.
+- **`vault_maintain.py --claim`** records the version without maintaining anything; the SessionStart hook uses it.
+
 ## [2.3.0] — 2026-10-15
 
 Portability step 2: the vault reads correctly in markdown viewers beyond Obsidian, and the skills behave correctly under harnesses without hooks.

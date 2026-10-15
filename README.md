@@ -262,6 +262,13 @@ regenerates index notes, described below.
   index without that marker is left alone, so a hand-written one is never clobbered; hand-written
   `topics:` are likewise respected. Requires `python3` — without it the hook exits silently.
 
+  **Sessions started before an upgrade leave the vault alone.** Hooks load when a session starts,
+  so a session still open from before an upgrade would otherwise regenerate indexes in the old
+  format when it exits. Each session start records the plugin version in
+  `Projects/.claudesidion-version`, which the session commit syncs to your other machines, and a
+  maintenance hook older than that record does nothing. A session start on an out-of-date install
+  says so.
+
 - **On session end** (`SessionEnd`) — if the vault is versioned and the plugin's own folders have
   pending changes, they're committed as one commit and pushed. This is the counterpart to the
   session-start pull, and it's the only place the vault is pushed; if an earlier push failed, it also

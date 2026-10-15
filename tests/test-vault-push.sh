@@ -47,6 +47,12 @@ assert_eq 0 "$HOOK_RC" 'normal write: exit 0'
 assert_contains "$(tracked "$v")" 'Projects/added.md' 'normal write: file committed'
 assert_eq "" "$(gitq "$v" status --porcelain)" 'normal write: tree left clean'
 
+v="$(build_vault push-version)"
+printf '2.3.0\n' > "$v/Projects/.claudesidion-version"
+run_hook vault-push.sh "$v"
+assert_contains "$(tracked "$v")" 'Projects/.claudesidion-version' \
+  'the plugin version record is committed, so other machines see it'
+
 # ---------------------------------------------------------------------------
 section '[T1.1] Must not commit files the plugin did not write'
 # ---------------------------------------------------------------------------
