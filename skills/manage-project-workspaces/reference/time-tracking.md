@@ -23,7 +23,7 @@ python3 "<plugin root>/scripts/session_hours.py" --repo <repo path> --since <fir
 
 | Rule | Why |
 | --- | --- |
-| **Only messages the user typed count** | A session left open, or a long autonomous run by Claude, is not time the user spent |
+| **Only messages the user typed count** | A session left open, or a long autonomous run by the agent, is not time the user spent |
 | **A gap over 15 minutes is a break**; the runs between breaks are sittings | Keeps a coffee break inside a sitting and a night's sleep outside it |
 | **Sessions are pooled before measuring** | Two sessions open at once must not count twice |
 | **A sitting books under the day it started** | Same rule as the TasksArchive; a late session past midnight stays on its day |

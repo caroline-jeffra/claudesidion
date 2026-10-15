@@ -60,7 +60,7 @@ $OBSIDIAN_VAULT/Contributions/<project>.md
 ## Confidentiality
 
 This skill reads from trackers, chat exports, monitoring and internal repos, and writes the result
-into the user's Obsidian vault. The vault is normally a **private** repository, so the risk is not
+into the user's markdown vault. The vault is normally a **private** repository, so the risk is not
 that the file itself is exposed — it is that the file's whole purpose is to be **quoted outside the
 company**, in a CV, a LinkedIn post or an application.
 

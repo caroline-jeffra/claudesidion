@@ -547,7 +547,9 @@ def build_topic_index(root: Path, cfg: Config, notes: list[Note], ref: Refs) -> 
 
     ordered = sorted(by_topic, key=lambda s: cfg.topics[s]["name"].lower())
     letters = sorted({cfg.topics[s]["name"][0].upper() for s in ordered})
-    lines.append(" · ".join(f"[[#{l}]]" for l in letters))
+    # A standard anchor link, not `[[#A]]`: every viewer resolves `(#a)` against the heading's
+    # GitHub-style slug, while a heading-only wikilink is Obsidian's dialect.
+    lines.append(" · ".join(f"[{l}](#{l.lower()})" for l in letters))
     lines.append("")
 
     current = ""
@@ -632,6 +634,9 @@ def build_ticket_index(root: Path, cfg: Config, notes: list[Note], ref: Refs) ->
         lines.append(f"- {head}" + (" — " + ", ".join(bits) if bits else ""))
 
     return write_if_changed(root / "TicketsIndex.md", "\n".join(lines))
+
+
+TABLE_ALIAS = re.compile(r"\[\[[^\[\]\n]*?\\?\|[^\[\]\n]*?\]\]")
 
 
 def wikilink(ref: str, text: str) -> str:
@@ -872,12 +877,25 @@ def link_targets(text: str) -> list[str]:
     return found
 
 
+KEY_LINE = re.compile(r"^\*\*[^*\n]+:\*\*")
+
+
+def stacked_keys(prose: str) -> int:
+    """Count `**Key:** value` lines sitting directly under another one.
+
+    Obsidian shows each on its own line; CommonMark viewers (Foam, GitHub) join a run of them
+    into one paragraph. A blank line between them, or a list item each, reads right everywhere.
+    """
+    lines = prose.splitlines()
+    return sum(1 for a, b in zip(lines, lines[1:]) if KEY_LINE.match(a) and KEY_LINE.match(b))
+
+
 def hard_wraps(prose: str) -> int:
     """Count places a sentence is broken across two source lines.
 
     Obsidian renders a single newline as a line break, so consecutive prose lines are not by
-    themselves a fault — stacked `**Key:** value` lines are a legitimate layout. A hard wrap is
-    the narrower case of a line that stops mid-sentence and a next line that carries on in
+    themselves a fault — stacked `**Key:** value` lines are `stacked_keys`' concern. A hard wrap
+    is the narrower case of a line that stops mid-sentence and a next line that carries on in
     lowercase.
     """
     count, prev = 0, ""
@@ -1134,6 +1152,18 @@ def lint(root: Path, cfg: Config, notes: list[Note], names: VaultNames, vault: P
                     stale.append(f"[[{t}]] (done)")
             if stale:
                 report(n, "stale-link", ", ".join(stale))
+
+        # An alias pipe inside a table cell splits the row into phantom columns unless escaped,
+        # and only some viewers honour the `\\|` escape. Write the link unaliased in a cell.
+        aliased = sum(len(TABLE_ALIAS.findall(line)) for line in prose.split("\n")
+                      if line.lstrip().startswith("|"))
+        if aliased:
+            report(n, "table-alias", f"{aliased} aliased link(s) in table cells — drop the alias")
+
+        stacked = stacked_keys(prose)
+        if stacked:
+            report(n, "stacked-keys", f"{stacked} `**Key:**` line(s) directly under another — "
+                   "make each a list item or separate them with a blank line")
 
         wraps = hard_wraps(prose)
         if wraps:

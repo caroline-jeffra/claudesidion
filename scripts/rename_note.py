@@ -10,7 +10,8 @@ leaves `supersedes:` frontmatter pointing at a name that no longer exists. This 
 What it rewrites, in every note outside `Archived/` and dot-directories:
 
   * `[[Old]]`, `[[Old|alias]]`, `[[Old\\|alias]]` (inside a table), `[[Old#heading]]`, and the
-    path-qualified forms `[[Folder/Old` that point at the renamed note.
+    path-qualified forms `[[Folder/Old` that point at the renamed note — in any letter case and
+    with or without a `.md` suffix, since viewers resolve `[[old.md]]` to the same note.
   * `supersedes:` / `superseded_by:` frontmatter naming the note — scalar, inline list or block list.
 
 Two rules keep it from rewriting links that meant a different note:
@@ -145,10 +146,13 @@ def rename(vault: Path, old: str, new: str, dry_run: bool = False) -> tuple[int,
     prefixes = set()
     for f in folders:
         if f and f != ".":
-            prefixes.add(f + "/")
-            prefixes.add(f.replace("Projects/", "", 1) + "/")
+            prefixes.add((f + "/").lower())
+            prefixes.add((f.replace("Projects/", "", 1) + "/").lower())
 
-    link = re.compile(r"\[\[((?:[^\[\]|#\n]*/)?)" + re.escape(old_name) + r"(?=\]\]|\||\\\||#)")
+    link = re.compile(
+        r"\[\[((?:[^\[\]|#\n]*/)?)" + re.escape(old_name) + r"(?:\.md)?(?=\]\]|\||\\\||#)",
+        re.IGNORECASE,
+    )
     links = files = 0
     pending: list[tuple[Path, str]] = []
     for p, r in notes(vault):
@@ -158,7 +162,7 @@ def rename(vault: Path, old: str, new: str, dry_run: bool = False) -> tuple[int,
         def sub(m: re.Match) -> str:
             nonlocal links
             pre = m.group(1)
-            if pre not in prefixes:
+            if pre.lower() not in prefixes:
                 # Resolve the link the way a viewer does: by the end of the note's path. A
                 # `[[Log/x]]` written in another workspace means that workspace's log, not this one.
                 hits = named_by(pre + old_name)

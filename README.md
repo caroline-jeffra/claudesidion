@@ -9,7 +9,7 @@ home for your work — notes, per-repo workspaces, and imported project context.
 |-------|--------------|
 | **capture-notes** | Saves general knowledge (ideas, facts, references) as well-formed notes with frontmatter, tags, and wikilinks, in the right folder (`Notes/`, `Resources/`, `Inbox/`). |
 | **manage-project-workspaces** | Maintains a per-repo workspace (`Projects/<repo>/`) as the source of truth for "what's next" / "where did we leave off", checked before any issue tracker. One note per fact, filed by type into `Log/`, `Decisions/`, `Threads/`, `Tickets/`, `Research/` and `Notes/`, with generated indexes on top. |
-| **ingest-project-docs** | Bootstraps a repo's workspace from context that already exists: open issues/milestones/PRs (GitHub `gh` / GitLab `glab`), in-repo docs (README, `docs/`, `CLAUDE.md`, `.claude/`), and scratch files. |
+| **ingest-project-docs** | Bootstraps a repo's workspace from context that already exists: open issues/milestones/PRs (GitHub `gh` / GitLab `glab`), in-repo docs (README, `docs/`, agent instruction files such as `CLAUDE.md` and `AGENTS.md`), and scratch files. |
 | **summarize-contribution** | Writes or updates a career-facing summary of your contribution to a project, one file per project in `Contributions/`. Evidence comes from git history (identity discovery, authored vs. shipped vs. integrated), the project workspace, and any tracker you have CLI access to. Structured around the project's major efforts, with liftable text for CV, LinkedIn, 360 reviews, and blog topics. Updates integrate into the existing text rather than appending. |
 | **condense-vault** | Weekly cleanup: first **reconciles** project workspaces against their note formats whatever their age — strips stale "Next" pointers and stacked entries from logs, repoints or removes links to superseded and deleted notes, renames off-pattern notes, trims over-length ones. Then condenses stale content (untouched >3 months) down to bullet points. Outside the project workspaces — in `Archived/`, `Inbox/`, `Resources/` and loose root notes — it also deletes records of finished work. **Project workspaces are condensed but never deleted from**; a workspace note records why work happened, which outlives the work itself. Deletes only when the vault is a git repository, since git history is what makes a deletion recoverable; an unversioned vault gets condensed instead. |
 
@@ -19,7 +19,7 @@ home for your work — notes, per-repo workspaces, and imported project context.
 - **`git`** — for vault version control. Optional: without it the sync hooks do nothing and `condense-vault` condenses rather than deletes.
 - **`jq`** — used by the hooks to read hook input.
 - **`python3`** — required by the `SessionEnd` maintenance hook. Without it that hook exits silently and indexes are simply not refreshed.
-- **[Obsidian](https://obsidian.md)** itself is optional. The vault is plain markdown on disk; Obsidian is just the nicest way to read it.
+- **A viewer** is optional. The vault is plain markdown on disk with `[[wikilinks]]`; [Obsidian](https://obsidian.md) and [Foam](https://foambubble.github.io/foam/) (VS Code) both read it, and links are written so either resolves them the same way.
 
 ## Setup
 
@@ -80,9 +80,10 @@ done
 > [!warning]
 > **The symlink path installs no hooks.** You get the skills, but not the vault git sync, the
 > file-size check, the condense reminder, or the index maintenance — every hook described under
-> "Keeping the vault current across a session" is absent. Nothing warns you about this; the skills
-> simply work and the vault is never committed or pushed on your behalf. Use the marketplace install
-> unless you specifically want skills-only.
+> "Keeping the vault current across a session" is absent. Without the hooks' heartbeat the skills
+> fall back to pulling, committing and pushing the vault themselves, but only when you close out a
+> session, and indexes refresh only then too. Use the marketplace install unless you specifically
+> want skills-only.
 
 ### Getting updates
 
@@ -144,7 +145,7 @@ Everything written to the vault is **scan-first**: written for someone looking f
 - **Bullets and `Key: value` pairs over paragraphs**; outcome, not process.
 - **One fact, one place** — link the specific note that owns a fact instead of restating it.
 - **No stale pointers** — references to finished, superseded or deleted things are removed, not annotated.
-- **One continuous line per block** — Obsidian soft-wraps; hard-wrapped prose reads badly there.
+- **One continuous line per block** — viewers soft-wrap; hard-wrapped prose reads badly there.
 
 ### Note formats
 
@@ -185,7 +186,10 @@ The folder skeleton is **fixed** — every workspace uses the same folder names 
 If your vault is itself a git repository, the plugin syncs it **at the session boundaries, not on
 every write**: a `SessionStart` hook pulls it (`git pull --ff-only`) once as the session begins, and a
 `SessionEnd` hook commits the session's work as one commit and pushes it. The skills themselves never
-touch vault git — they just write files.
+touch vault git while the hooks are running — each session start writes a heartbeat to
+`.git/claudesidion-hooks`, and a skill that finds it fresh just writes files. Under a harness with no
+hooks (no heartbeat, or one over a day old), the skills pull before their first read and commit and
+push the same owned paths when you close out the session.
 
 **What gets committed, and what does not.** The push hook does *not* `git add -A`. It commits only
 paths the plugin's conventions own — `Projects/`, `Resources/`, `Contributions/`, and the root
@@ -248,7 +252,7 @@ regenerates index notes, described below.
 - **On session start, condense reminder** (`SessionStart`) — the `condense-vault` skill stamps
   `.condense-last-run` in the vault on every run; when that stamp is missing or more than 7 days
   old **and** there is work for it — something stale to condense, or workspace notes that break
-  their format — this hook reminds Claude to offer the weekly condense run (it only offers — the
+  their format — this hook reminds the agent to offer the weekly condense run (it only offers — the
   run never starts unprompted).
 - **On session end, index maintenance** (`SessionEnd`) — for each workspace that opts in with a
   `.vault-config.json`, this hook fills in derived frontmatter (`project`, `topics`, `tags`) and
@@ -279,7 +283,7 @@ work, and no hook nags for it — earlier versions reminded on every `Stop` (i.e
 interrupted the coding work it was meant to record. Reading the vault is unrestricted.
 
 Vault reads and writes are also kept out of the transcript: notes are extracted with targeted
-`grep`/`sed` rather than read whole, writes are silent, and Claude reports what it wrote in a line
+`grep`/`sed` rather than read whole, writes are silent, and the agent reports what it wrote in a line
 instead of echoing the note — so vault I/O doesn't bury your actual work, even in verbose mode.
 
 All hooks **fail open** — if the vault path is unset, it's not a git repo, or anything goes wrong,

@@ -1,11 +1,11 @@
 ---
 name: capture-notes
-description: Creates well-formed notes in the user's Obsidian vault with YAML frontmatter, hyphenated tags, and wikilinks, placed in the right folder. Use when the user says "make a note", "capture this", "save this to my vault/Obsidian", or wants an idea, fact, or reference saved as a durable note (not repo-specific dev work — that is manage-project-workspaces).
+description: Creates well-formed notes in the user's markdown vault (Obsidian, Foam, …) with YAML frontmatter, hyphenated tags, and wikilinks, placed in the right folder. Use when the user says "make a note", "capture this", "save this to my vault/Obsidian", or wants an idea, fact, or reference saved as a durable note (not repo-specific dev work — that is manage-project-workspaces).
 ---
 
 # Capturing notes
 
-Save general knowledge — ideas, facts, references — as durable notes in the user's Obsidian vault.
+Save general knowledge — ideas, facts, references — as durable notes in the user's markdown vault (Obsidian, Foam, …).
 
 **Vault location:** resolve in this order — (1) the `OBSIDIAN_VAULT` environment variable, (2) the config file `~/.claude/obsidian-vault` (one line: the vault's absolute path), (3) the default `~/ObsidianVault`. If none of the three yields an existing directory, ask the user where their vault is and write the answer to `~/.claude/obsidian-vault` so every future session and hook finds it. Use the resolved absolute path (written below as `$OBSIDIAN_VAULT`) for every read/write.
 
@@ -29,13 +29,13 @@ Repo-specific development work (progress logs, decisions, TODOs for a codebase) 
 
 Two rules govern all markdown written to the vault:
 
-- **No hard line breaks inside a text block.** Each paragraph or bullet is one source line, however long; blank lines separate paragraphs. Obsidian soft-wraps to the pane width — never wrap prose to a column width.
+- **No hard line breaks inside a text block.** Each paragraph or bullet is one source line, however long; blank lines separate paragraphs. Viewers soft-wrap to the pane width — never wrap prose to a column width.
 - **Scan-first prose.** Write for someone scanning for one fact: the answer first, bullets and `**Key:** value` pairs over paragraphs (at most three short sentences each), outcome rather than process, and a link to the note that owns a fact rather than a restatement of it. Full rules: [capture-notes/reference/conventions.md](reference/conventions.md).
 
 ## Keep vault I/O out of the transcript
 
 Vault notes are long prose, and echoing them into the transcript buries the surrounding work. **Never
-dump a note's full contents into the conversation** — not even when Claude is running verbose.
+dump a note's full contents into the conversation** — not even when the agent is running verbose.
 
 Read with targeted Bash extraction (`grep`, `sed -n`, an `awk` range) rather than pulling whole notes
 into context; write with Bash appends/edits and send command output to `/dev/null`. Afterwards, report
@@ -43,13 +43,16 @@ what you wrote in one short line rather than quoting or diffing it.
 
 ## Vault git sync
 
-**Do not run `git pull`, `git add`, `git commit`, or `git push` on the vault.** The plugin handles
-that at the session boundaries: a `SessionStart` hook pulls the vault to latest once, and a
-`SessionEnd` hook commits and pushes everything written during the session as a single commit. Just
-write the files and move on.
+**Check who syncs first.** The plugin's hooks sync the vault at the session boundaries — on session start one pulls it to latest, and on session end one regenerates the indexes, then commits and pushes everything as a single commit. Each start writes a heartbeat to `.git/claudesidion-hooks` inside the vault:
 
-If the vault is not under version control, nothing happens at all (and you should never `git init`
-it). The only time to touch vault git yourself is when the user explicitly asks you to.
+```bash
+find "$(git -C "$OBSIDIAN_VAULT" rev-parse --absolute-git-dir)" -maxdepth 1 -name claudesidion-hooks -mmin -1440
+```
+
+- **Heartbeat less than a day old** → the hooks are installed. **Do not run `git pull`, `git add`, `git commit` or `git push` on the vault**; write the files and move on.
+- **No heartbeat, or an old one** → this harness runs no hooks, so sync yourself: `git -C "$OBSIDIAN_VAULT" pull --ff-only` before your first read, and when the user closes out the session run `python3 "<plugin root>/hooks/vault_maintain.py" "$OBSIDIAN_VAULT"` (the plugin root is two levels above this skill's base directory), then stage only the paths the plugin owns (`git -C "$OBSIDIAN_VAULT" add -- Projects Resources Contributions Home.md TasksArchive.md WorkPlanning.md`, skipping any that do not exist), commit them as one single-line commit (`vault: session updates YYYY-MM-DD`) and push. Never `git add -A`, and never commit mid-merge or on a detached HEAD. If the push fails, leave the commit and tell the user.
+
+If the vault is not under version control, there is nothing to sync (and you should never `git init` it).
 ## Note template
 
 ```markdown

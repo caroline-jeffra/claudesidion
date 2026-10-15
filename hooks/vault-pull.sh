@@ -42,6 +42,12 @@ command -v git >/dev/null 2>&1 || exit 0
 # Skip if the vault is not a git work tree (mirrors the skills' "skip if not a git repo").
 git -C "$VAULT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 
+# Heartbeat: tells the skills the sync hooks are installed and ran this session, so they leave
+# git to the hooks. Without a fresh one — a harness with no hooks — the skills sync themselves.
+# It lives inside .git, so it is never committed or synced to another machine.
+git_dir="$(git -C "$VAULT" rev-parse --absolute-git-dir 2>/dev/null)" \
+  && date +%Y-%m-%dT%H:%M:%S > "$git_dir/claudesidion-hooks" 2>/dev/null
+
 emit_context() {
   # Emit additionalContext if jq is available; otherwise stay silent (never error).
   command -v jq >/dev/null 2>&1 || return 0

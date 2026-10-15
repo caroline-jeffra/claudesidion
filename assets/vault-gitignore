@@ -1,4 +1,4 @@
-# Suggested .gitignore for an Obsidian vault managed by claudesidion.
+# Suggested .gitignore for a markdown vault (Obsidian, Foam, …) managed by claudesidion.
 # Copy to the root of your vault. The push hook also refuses secret-shaped filenames, but a
 # blocklist can never be complete — this is the durable half of that guard.
 
@@ -7,6 +7,12 @@
 /.obsidian/workspace*
 /.obsidian/cache
 /.obsidian/plugins/*/data.json
+
+# VS Code / Foam per-machine state. Settings and recommended extensions are what make the vault
+# open the same everywhere, so they stay tracked; Foam's templates live in .foam/ and stay too.
+/.vscode/*
+!/.vscode/settings.json
+!/.vscode/extensions.json
 
 # Secrets and credentials — never in a synced knowledge base.
 .env

@@ -1,11 +1,11 @@
 ---
 name: ingest-project-docs
-description: Ingests an existing project's documentation and tracker context into the user's Obsidian vault workspace — open issues and milestones, open PRs/MRs, in-repo docs (README, docs/, CLAUDE.md, .claude/), and temp/scratch files — summarizing each and linking back to the source. Use when starting to track a repo in the vault, or when the user says "ingest this project", "pull in the docs/issues", "bootstrap the workspace", or "import existing context".
+description: Ingests an existing project's documentation and tracker context into the user's markdown vault (Obsidian, Foam, …) workspace — open issues and milestones, open PRs/MRs, in-repo docs (README, docs/, agent instruction files such as CLAUDE.md and AGENTS.md), and temp/scratch files — summarizing each and linking back to the source. Use when starting to track a repo in the vault, or when the user says "ingest this project", "pull in the docs/issues", "bootstrap the workspace", or "import existing context".
 ---
 
 # Ingesting project docs
 
-Bootstrap a repo's Obsidian workspace from context that already exists — issues, milestones, PRs/MRs,
+Bootstrap a repo's vault workspace from context that already exists — issues, milestones, PRs/MRs,
 in-repo docs, and stray working files — so the vault starts as a real source of truth instead of empty.
 
 **Vault location:** resolve in this order — (1) the `OBSIDIAN_VAULT` environment variable, (2) the config file `~/.claude/obsidian-vault` (one line: the vault's absolute path), (3) the default `~/ObsidianVault`. If none of the three yields an existing directory, ask the user where their vault is and write the answer to `~/.claude/obsidian-vault` so every future session and hook finds it. Use the resolved absolute path (written below as `$OBSIDIAN_VAULT`) for every read/write.
@@ -50,7 +50,7 @@ Exact commands: see [reference/sources.md](reference/sources.md).
 Open issues, open milestones, and open PRs/MRs. Keep title, number, URL, labels, and a one-line gist.
 
 **Step 4 — Gather in-repo docs and temp files.**
-- Docs: `README*`, `docs/`, `CLAUDE.md`, `.claude/` (agents/skills/commands), any `ARCHITECTURE`/`ADR` files.
+- Docs: `README*`, `docs/`, any `ARCHITECTURE`/`ADR` files, and every agent instruction file present — `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules/`, `.github/copilot-instructions.md`, `.claude/` (agents/skills/commands).
 - Temp/scratch: untracked or gitignored working files, `TODO.md`, `NOTES.md`, scratchpads
   (`git status --porcelain --ignored` finds them). These are often the richest undocumented context.
 
@@ -63,7 +63,7 @@ say so, and write nothing.
 See
 [manage-project-workspaces/reference/structure.md](../manage-project-workspaces/reference/structure.md)
 for the full contract.
-- **Overview.md** — seed "What this is" from the README's intro; set trackers (issue/PR URLs); fold in `docs/`/`CLAUDE.md` highlights as short bullets with links.
+- **Overview.md** — seed "What this is" from the README's intro; set trackers (issue/PR URLs); fold in highlights from `docs/` and the agent instruction files as short bullets with links.
 - **Threads** — one note per thread of work in `Threads/` (`type: thread`, `status: open`), its open
   issues as `- [ ]` items inside. Group related issues into one thread rather than making a note per
   issue.
@@ -87,18 +87,21 @@ PRs, README + 4 docs, 1 TODO.md"), and list any source that failed (auth, missin
 
 Two rules govern all markdown written to the vault:
 
-- **No hard line breaks inside a text block.** Each paragraph or bullet is one source line, however long; blank lines separate paragraphs. Obsidian soft-wraps to the pane width — never wrap prose to a column width.
+- **No hard line breaks inside a text block.** Each paragraph or bullet is one source line, however long; blank lines separate paragraphs. Viewers soft-wrap to the pane width — never wrap prose to a column width.
 - **Scan-first prose.** Write for someone scanning for one fact: the answer first, bullets and `**Key:** value` pairs over paragraphs (at most three short sentences each), outcome rather than process, and a link to the note that owns a fact rather than a restatement of it. Full rules: [capture-notes/reference/conventions.md](../capture-notes/reference/conventions.md).
 
 ## Vault git sync
 
-**Do not run `git pull`, `git add`, `git commit`, or `git push` on the vault.** The plugin handles
-that at the session boundaries: a `SessionStart` hook pulls the vault to latest once, and a
-`SessionEnd` hook commits and pushes everything written during the session as a single commit. Just
-write the files and move on.
+**Check who syncs first.** The plugin's hooks sync the vault at the session boundaries — on session start one pulls it to latest, and on session end one regenerates the indexes, then commits and pushes everything as a single commit. Each start writes a heartbeat to `.git/claudesidion-hooks` inside the vault:
 
-If the vault is not under version control, nothing happens at all (and you should never `git init`
-it). The only time to touch vault git yourself is when the user explicitly asks you to.
+```bash
+find "$(git -C "$OBSIDIAN_VAULT" rev-parse --absolute-git-dir)" -maxdepth 1 -name claudesidion-hooks -mmin -1440
+```
+
+- **Heartbeat less than a day old** → the hooks are installed. **Do not run `git pull`, `git add`, `git commit` or `git push` on the vault**; write the files and move on.
+- **No heartbeat, or an old one** → this harness runs no hooks, so sync yourself: `git -C "$OBSIDIAN_VAULT" pull --ff-only` before your first read, and when the user closes out the session run `python3 "<plugin root>/hooks/vault_maintain.py" "$OBSIDIAN_VAULT"` (the plugin root is two levels above this skill's base directory), then stage only the paths the plugin owns (`git -C "$OBSIDIAN_VAULT" add -- Projects Resources Contributions Home.md TasksArchive.md WorkPlanning.md`, skipping any that do not exist), commit them as one single-line commit (`vault: session updates YYYY-MM-DD`) and push. Never `git add -A`, and never commit mid-merge or on a detached HEAD. If the push fails, leave the commit and tell the user.
+
+If the vault is not under version control, there is nothing to sync (and you should never `git init` it).
 ## Conventions
 
 Dates `YYYY-MM-DD`; tags lowercase-hyphenated; link with `[[wikilinks]]` inside the vault and normal

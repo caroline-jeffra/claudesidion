@@ -16,7 +16,8 @@ What it does, for every note inside a workspace (a folder with `.vault-config.js
     target is replaced with the shortest path that names only that note:
     `[[2026-10-01]]` -> `[[Alpha/Log/2026-10-01|2026-10-01]]`.
   * The text the link displayed is kept as an alias, so the note reads the same; an existing alias
-    or `#heading` is preserved. Inside a table row the alias pipe is escaped (`\\|`).
+    or `#heading` is preserved. Inside a table row no alias is added — an alias pipe splits the
+    row in viewers that ignore the `\\|` escape — so a cell gets the bare qualified path.
   * Links in code spans and fenced blocks, embeds, and anything outside a workspace or in
     `Archived/` are left alone. A link with no candidate, or several, in its own workspace is
     reported and left alone — that one needs a person.
@@ -68,10 +69,9 @@ def qualify_text(text: str, ws_rel: str, names: VaultNames) -> tuple[str, int, l
             left.append(target)
             return m.group(0)
         ref = shortest_ref(home[0], names.suffixes)
-        if not rest or rest.startswith("#"):
+        if not in_table and (not rest or rest.startswith("#")):
             # Keep what the reader saw: `[[2026-10-01]]` still displays `2026-10-01`.
-            shown = target + rest
-            rest = rest + ("\\|" if in_table else "|") + shown
+            rest = rest + "|" + target + rest
         fixed += 1
         return f"[[{ref}{rest}]]"
 

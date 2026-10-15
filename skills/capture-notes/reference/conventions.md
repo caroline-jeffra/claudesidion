@@ -12,12 +12,12 @@
 
 These rules apply to **every markdown file written into the vault**, by any skill.
 
-**No hard line breaks inside a text block.** Each paragraph and each bullet is a single source line, however long; separate paragraphs with a blank line. Obsidian soft-wraps to the pane width, so hard-wrapped lines (the 80/100-column habit from code) produce ragged, uncomfortable reading there. Never wrap prose to a column width.
+**No hard line breaks inside a text block.** Each paragraph and each bullet is a single source line, however long; separate paragraphs with a blank line. Viewers (Obsidian, Foam, …) soft-wrap to the pane width, so hard-wrapped lines (the 80/100-column habit from code) produce ragged, uncomfortable reading there. Never wrap prose to a column width.
 
 **Scan-first writing.** Every note is written for someone scanning for one fact, not someone reading start to finish:
 
 - **Answer first.** The first line of a note, and the first line under every heading, is the point. Setup and reasoning follow, if at all.
-- **Bullets and `**Key:** value` pairs over paragraphs.** A paragraph is at most three short, one-idea sentences in active voice.
+- **Bullets and `**Key:** value` pairs over paragraphs.** A paragraph is at most three short, one-idea sentences in active voice. Never stack `**Key:**` lines directly under each other: CommonMark viewers join them into one paragraph. Make each a list item, or separate them with a blank line.
 - **Outcome, not process.** Write what is true or what was concluded — never the story of how you got there.
 - **One fact, one place.** Link the note that owns a fact instead of restating it, and link the specific note rather than an index.
 - **No stale pointers.** When something is finished, superseded or deleted, remove references to it rather than annotating them ("~~old~~", "update:", "no longer true").
@@ -58,7 +58,7 @@ The rule above still holds everywhere else in the vault, including `Notes/`, `Re
 
 - Link liberally: `[[NoteName]]`. This is how the vault becomes navigable.
 - Link to notes that do not exist yet — a dangling `[[link]]` is a valid "write this later" marker
-  and shows up in Obsidian's unresolved-links view.
+  and shows up in the viewer's unresolved-links view.
 - Prefer linking over duplicating: reference `[[RateLimitingStrategies]]` instead of restating it.
 - Use display text when the flow needs it: `[[RateLimitingStrategies|rate limiting]]`.
 

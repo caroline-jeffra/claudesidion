@@ -14,6 +14,30 @@ are minor.
 
 ## [Unreleased]
 
+## [2.3.0] — 2026-10-15
+
+Portability step 2: the vault reads correctly in markdown viewers beyond Obsidian, and the skills behave correctly under harnesses without hooks.
+
+### Added
+
+- **Git sync without hooks.** `vault-pull.sh` writes a heartbeat to `.git/claudesidion-hooks` in the vault at every session start. The skills leave vault git to the hooks while that heartbeat is less than a day old; without one, under a harness that runs no hooks, they pull before their first read and, on close-out, regenerate the indexes and commit and push the same owned paths the push hook would.
+- **`table-alias` lint finding** for an aliased wikilink inside a table cell. The alias pipe splits the row into phantom columns in viewers that ignore the `\|` escape.
+- **`stacked-keys` lint finding** for `**Key:** value` lines stacked directly under each other. CommonMark viewers (Foam, GitHub) join them into one paragraph; a list item each, or a blank line between, reads right everywhere.
+- **`ingest-project-docs` reads every agent's instruction file**: `AGENTS.md`, `GEMINI.md`, `.cursor/rules/` and `.github/copilot-instructions.md` alongside `CLAUDE.md` and `.claude/`.
+
+### Changed
+
+- **TopicIndex letter navigation uses standard anchor links** (`[A](#a)`) instead of Obsidian's heading wikilinks (`[[#A]]`).
+- **`qualify_links.py` adds no alias inside a table row**; a cell gets the bare qualified path.
+- **Issue items ingested into threads read `issue <n>:`**, not `#<n>`, which viewers parse as a tag.
+- **`rename_note.py` rewrites `[[Old.md]]` and links in any letter case**, as viewers resolve them.
+- **Skill text is harness- and viewer-neutral**: "agent" rather than "Claude", "markdown vault (Obsidian, Foam, …)" rather than "Obsidian vault". "Obsidian" stays in skill descriptions so existing trigger phrases keep working.
+- **`condense-vault` never touches any dot-directory** (`.vscode/`, `.foam/`, not only `.obsidian/`), and `assets/vault-gitignore` ignores VS Code's per-machine state while keeping its settings and Foam's templates tracked.
+
+### Fixed
+
+- **WorkspaceIndex and TimeTracking templates** no longer show aliased links in table cells, and the WorkspaceIndex example links `Overview` rather than the pre-2.0 `Home`.
+
 ## [2.2.0] — 2026-10-14
 
 ### Fixed

@@ -1,11 +1,11 @@
 ---
 name: manage-project-workspaces
-description: Maintains a per-repository workspace in the user's Obsidian vault as the source of truth for ongoing development work — overview, dated progress log, decisions/ADRs, and open threads. Use when the user asks what to work on next or where a body of work stands — "what's the next task", "what should I work on", "where did we leave off", "what were we doing on this" — as well as "log progress", "record what we did", "record this decision", "track open threads", "close this thread", and — only on request — "set up time tracking", "how many hours has this phase taken". Consult this vault before an issue tracker (Jira/GitHub/GitLab) for next-work questions. Not for "what's the status" in the git sense — uncommitted changes, branch state and diffs come from git, not from here.
+description: Maintains a per-repository workspace in the user's markdown vault (Obsidian, Foam, …) as the source of truth for ongoing development work — overview, dated progress log, decisions/ADRs, and open threads. Use when the user asks what to work on next or where a body of work stands — "what's the next task", "what should I work on", "where did we leave off", "what were we doing on this" — as well as "log progress", "record what we did", "record this decision", "track open threads", "close this thread", and — only on request — "set up time tracking", "how many hours has this phase taken". Consult this vault before an issue tracker (Jira/GitHub/GitLab) for next-work questions. Not for "what's the status" in the git sense — uncommitted changes, branch state and diffs come from git, not from here.
 ---
 
 # Managing project workspaces
 
-Keep a durable, per-repo workspace in the user's Obsidian vault so ongoing development work has one
+Keep a durable, per-repo workspace in the user's markdown vault (Obsidian, Foam, …) so ongoing development work has one
 findable home — simpler than scattering context across ticket trackers, issues, and code comments.
 
 **Vault location:** resolve in this order — (1) the `OBSIDIAN_VAULT` environment variable, (2) the config file `~/.claude/obsidian-vault` (one line: the vault's path — whitespace is trimmed and a leading `~/` or `$HOME/` is expanded), (3) the default `~/ObsidianVault`. If none of the three yields an existing directory, ask the user where their vault is and write the answer to `~/.claude/obsidian-vault` so every future session and hook finds it. Use the resolved absolute path (written below as `$OBSIDIAN_VAULT`) for every read/write.
@@ -296,6 +296,9 @@ So the rule is: **write the shortest path that names exactly one note.**
 - **A log day → prefix it with the workspace's `Log/` path when the date is not unique**, and show
   the date: `[[Takeoffs/Log/2026-10-04|2026-10-04]]`. Several workspaces often log the same day.
   The `vault-maintain` lint reports a bare one as `ambiguous-link`.
+- **Inside a table cell → never alias.** Write `[[Takeoffs/Log/2026-10-04]]`, not
+  `[[…|2026-10-04]]`: the alias pipe splits the row into phantom columns in any viewer that ignores
+  the `\|` escape. The lint reports one as `table-alias`.
 
 There is **no same-folder exception.** A bare `[[Overview]]` in a workspace's own notes is still
 ambiguous, and it is often written from a different folder (`ProgressLog.md` links into `Log/`), so
@@ -377,7 +380,7 @@ that project's `ProgressLog`; do not restage it here.
 - Several projects in one day → one clause each, project named first so they stay separable.
 
 **No links inside table cells.** A wikilink's alias pipe breaks the table row into phantom columns
-unless escaped as `\|`, and the links crowd out the few words the cell is meant to carry. Project
+in viewers that ignore the `\|` escape, and the links crowd out the few words the cell is meant to carry. Project
 links belong in the `Month's Projects` line above the table, which is the one place they go.
 
 Write it as a cell that renders in one line, e.g.:
@@ -433,7 +436,7 @@ governs *how*.
 
 Vault notes are long prose. Echoing their full text into the transcript buries the actual coding work
 the user is trying to follow, so **never dump a vault file's contents into the conversation** — not
-even when the user has Claude running verbose.
+even when the user has the agent running verbose.
 
 - **Reading** — prefer targeted Bash extraction over reading whole files: `grep`, `sed -n '1,40p'`,
   or an `awk` range that pulls just the section you need (the latest `## YYYY-MM-DD` entry, the
@@ -459,13 +462,16 @@ Write for **someone scanning for one fact**, not someone reading start to finish
 
 ## Vault git sync
 
-**Do not run `git pull`, `git add`, `git commit`, or `git push` on the vault.** The plugin handles
-that at the session boundaries: a `SessionStart` hook pulls the vault to latest once, and a
-`SessionEnd` hook commits and pushes everything written during the session as a single commit. Just
-write the files and move on.
+**Check who syncs first.** The plugin's hooks sync the vault at the session boundaries — on session start one pulls it to latest, and on session end one regenerates the indexes, then commits and pushes everything as a single commit. Each start writes a heartbeat to `.git/claudesidion-hooks` inside the vault:
 
-If the vault is not under version control, nothing happens at all (and you should never `git init`
-it). The only time to touch vault git yourself is when the user explicitly asks you to.
+```bash
+find "$(git -C "$OBSIDIAN_VAULT" rev-parse --absolute-git-dir)" -maxdepth 1 -name claudesidion-hooks -mmin -1440
+```
+
+- **Heartbeat less than a day old** → the hooks are installed. **Do not run `git pull`, `git add`, `git commit` or `git push` on the vault**; write the files and move on.
+- **No heartbeat, or an old one** → this harness runs no hooks, so sync yourself: `git -C "$OBSIDIAN_VAULT" pull --ff-only` before your first read, and when the user closes out the session run `python3 "<plugin root>/hooks/vault_maintain.py" "$OBSIDIAN_VAULT"` (the plugin root is two levels above this skill's base directory), then stage only the paths the plugin owns (`git -C "$OBSIDIAN_VAULT" add -- Projects Resources Contributions Home.md TasksArchive.md WorkPlanning.md`, skipping any that do not exist), commit them as one single-line commit (`vault: session updates YYYY-MM-DD`) and push. Never `git add -A`, and never commit mid-merge or on a detached HEAD. If the push fails, leave the commit and tell the user.
+
+If the vault is not under version control, there is nothing to sync (and you should never `git init` it).
 ## Conventions
 
 - Dates: `YYYY-MM-DD`. Tags (if used in frontmatter): lowercase, hyphenated.

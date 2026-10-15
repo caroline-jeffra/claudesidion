@@ -60,6 +60,7 @@ def build(root: Path, versioned: bool = True) -> Path:
           "# 2026-10-01\n\n- [[use-old-host]], [[use-old-host|the old one]], [[use-old-host#Why]]\n"
           "- [[Projects/Alpha/Decisions/use-old-host]] and [[Alpha/use-old-host]]\n"
           "- not this: [[use-old-host-two]] or [[Beta/use-old-host]]\n"
+          "- forms: [[Use-Old-Host]] [[use-old-host.md|md]] [[Decisions/USE-OLD-HOST.MD]]\n"
           "| a | [[use-old-host\\|cell]] |\n")
     write(a / "Threads" / "shared-name.md", "# Alpha's shared\n")
     write(a / "Overview.md", "# Alpha\n\n- [[shared-name]]\n")
@@ -87,8 +88,10 @@ try:
     check("[[UseOldHost|the old one]]" in log, "aliased link")
     check("[[UseOldHost#Why]]" in log, "heading link")
     check("[[UseOldHost\\|cell]]" in log, "escaped alias inside a table")
-    check(log.count("[[UseOldHost]]") == 3,
+    check(log.split("- forms:")[0].count("[[UseOldHost]]") == 3,
           "path-qualified links to the note become bare", log)
+    check("- forms: [[UseOldHost]] [[UseOldHost|md]] [[UseOldHost]]\n" in log,
+          "case variants and a .md suffix are rewritten", log)
     check("[[use-old-host-two]]" in log, "a longer name sharing the prefix is untouched")
     check("[[Beta/use-old-host]]" in log, "a path into another workspace is untouched")
     check("[[UseOldHost]]" in (v / "Resources/Elsewhere.md").read_text(),
