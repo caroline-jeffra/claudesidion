@@ -12,7 +12,9 @@ Keep the vault lean and **true**. Two passes, one run:
 
 This is a routine, not a per-note judgement call — run it over the whole vault in one pass.
 
-**Vault location:** resolve in this order — (1) the `OBSIDIAN_VAULT` environment variable, (2) the config file `~/.claude/obsidian-vault` (one line: the vault's absolute path), (3) the default `~/ObsidianVault`. If none of the three yields an existing directory, ask the user where their vault is and write the answer to `~/.claude/obsidian-vault` so every future session and hook finds it. Use the resolved absolute path (written below as `$OBSIDIAN_VAULT`) for every read/write.
+**Vault location:** resolve in this order — (1) the `OBSIDIAN_VAULT` environment variable, (2) the config file `${XDG_CONFIG_HOME:-~/.config}/claudesidion/vault`, (3) the legacy config file `~/.claude/obsidian-vault`, (4) the default `~/ObsidianVault`. A config file holds one line, the vault's path (whitespace trimmed, a leading `~/` or `$HOME/` expanded); `claudesidion vault-path` prints the result. If none of them yields an existing directory, ask the user where their vault is and write the answer to `~/.config/claudesidion/vault` (creating the folder) so every future session and hook finds it. Use the resolved absolute path (written below as `$OBSIDIAN_VAULT`) for every read/write.
+
+**Plugin tools** run through the `claudesidion` command. If `command -v claudesidion` finds nothing, run `python3 "<plugin root>/bin/claudesidion"` instead — the plugin root is two levels above this skill's base directory. A skill installed on its own, outside the plugin, needs the command on PATH: `ln -s <plugin root>/bin/claudesidion ~/.local/bin/`.
 
 ## Step 1 — Reconcile formats and names (every run, any age)
 
@@ -22,18 +24,18 @@ The format rules are in [manage-project-workspaces/reference/structure.md](../ma
 
 **Rename first.** Work through `legacy-name` and `bad-name` before anything else: every other fix writes links, and they should point at the final names.
 
-**Every rename and move goes through the plugin's rename script** (`../../scripts/rename_note.py` relative to this skill's base directory) — never `git mv` or `mv` by hand. It moves the note (with `git mv` in a versioned vault) and rewrites every `[[link]]` and `supersedes:`/`superseded_by:` value that points at it, vault-wide, under a lock:
+**Every rename and move goes through the plugin's rename script** (`claudesidion rename`) — never `git mv` or `mv` by hand. It moves the note (with `git mv` in a versioned vault) and rewrites every `[[link]]` and `supersedes:`/`superseded_by:` value that points at it, vault-wide, under a lock:
 
 ```bash
-python3 "<plugin root>/scripts/rename_note.py" "<old vault-relative path>" "<new vault-relative path>"
+claudesidion rename "<old vault-relative path>" "<new vault-relative path>"
 ```
 
 Add `--dry-run` to see how many links a rename would rewrite. A link whose target also names another note is rewritten only inside the renamed note's own workspace, so links that meant the other note are left alone. Rewritten links use the shortest path that names only the moved note.
 
-**Get the findings from the lint.** It ships with the plugin at `../../hooks/vault_maintain.py` relative to this skill's base directory:
+**Get the findings from the lint**, which ships with the plugin:
 
 ```bash
-python3 "<plugin root>/hooks/vault_maintain.py" --lint "$OBSIDIAN_VAULT"
+claudesidion lint
 ```
 
 Each line is `<workspace>/<path>: <code> — <detail>`. Work through them by code:
@@ -45,7 +47,7 @@ Each line is `<workspace>/<path>: <code> — <detail>`. Work through them by cod
 | `over-budget` | Rewrite the note to its template: cut process narrative, dates on ticked items, commit SHAs and restated context; link out to the note that owns a fact. If it still will not fit, it is two notes — split it. |
 | `stale-link` | A current-state note links a superseded decision or a finished thread. Repoint to the successor (`superseded_by`), or delete the line if it only existed to point at finished work. |
 | `broken-link` | Find where the target went (`git log --diff-filter=DR --name-status -- '*<name>*'`). Renamed → repoint. Deleted → remove the link, keeping the plain text only if the sentence still needs it. |
-| `ambiguous-link` | A bare log date or structural-file link (`[[2026-10-01]]`, `[[Overview]]`) that names a note in several workspaces. Run `python3 "<plugin root>/scripts/qualify_links.py"` once (add `--dry-run` first to see the count): it rewrites each to the copy in the linking note's own workspace, keeping the displayed text (`[[Alpha/Log/2026-10-01\|2026-10-01]]`). Fix any link it reports as unresolved by hand. |
+| `ambiguous-link` | A bare log date or structural-file link (`[[2026-10-01]]`, `[[Overview]]`) that names a note in several workspaces. Run `claudesidion qualify` once (add `--dry-run` first to see the count): it rewrites each to the copy in the linking note's own workspace, keeping the displayed text (`[[Alpha/Log/2026-10-01\|2026-10-01]]`). Fix any link it reports as unresolved by hand. |
 | `index-link` | Replace the link to an index with a link to the specific note it meant. |
 | `bad-name` | Rename to PascalCase per the naming table with the rename script, keeping the `# Heading` as the readable form; it rewrites the links. A **workspace folder** rename also updates its `WorkspaceIndex` row, its `Contributions/` note name and every `[[OldFolder/` link prefix (the TasksArchive's project lines included). |
 | `dup-name` | Two notes share a name vault-wide. If the other copy is under `Archived/`, `git rm` the archived copy — Archived is expendable, and it is the one making links ambiguous. Otherwise rename the less-linked note to something more specific, as for `bad-name`. |

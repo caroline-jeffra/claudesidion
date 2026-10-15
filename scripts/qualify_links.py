@@ -39,7 +39,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "hooks"))
 
-from rename_note import resolve_vault  # noqa: E402
+from claudesidion_paths import resolve_vault  # noqa: E402
 from vault_maintain import WIKILINK, VaultNames, find_workspaces, shortest_ref  # noqa: E402
 
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})")

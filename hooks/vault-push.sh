@@ -9,28 +9,11 @@
 
 set -u
 
-# Vault resolution: env var, then the config file ~/.claude/obsidian-vault (one line, the vault's
-# absolute path), then the default. The config file exists because interactive profile exports do
-# not reach hook shells.
-VAULT="${OBSIDIAN_VAULT:-}"
-if [ -z "$VAULT" ] && [ -f "$HOME/.claude/obsidian-vault" ]; then
-  VAULT="$(head -n1 "$HOME/.claude/obsidian-vault" 2>/dev/null)"
-  # Trim surrounding whitespace, then expand a leading ~ or $HOME. A config file is
-  # hand-edited, so "~/Documents/Vault" and a stray trailing space are both likely — and
-  # both would otherwise resolve to a path that does not exist, silently disabling the
-  # plugin with no diagnostic. Only a leading ~ is expanded; a literal ~ elsewhere in a
-  # path is left alone.
-  VAULT="${VAULT#"${VAULT%%[![:space:]]*}"}"   # leading whitespace
-  VAULT="${VAULT%"${VAULT##*[![:space:]]}"}"   # trailing whitespace
-  # shellcheck disable=SC2088  # literal '~' match patterns, expanded by hand just below
-  case "$VAULT" in
-    '~') VAULT="$HOME" ;;
-    '~/'*) VAULT="$HOME/${VAULT#\~/}" ;;
-    '$HOME') VAULT="$HOME" ;;
-    '$HOME/'*) VAULT="$HOME/${VAULT#\$HOME/}" ;;
-  esac
-fi
-VAULT="${VAULT:-$HOME/ObsidianVault}"
+# Vault resolution is shared by every hook: env var, the claudesidion config file, the legacy
+# ~/.claude file, then the default. See lib-paths.sh.
+# shellcheck source=hooks/lib-paths.sh
+. "$(dirname "$0")/lib-paths.sh" 2>/dev/null || exit 0
+VAULT="$(resolve_vault)"
 
 command -v git >/dev/null 2>&1 || exit 0
 

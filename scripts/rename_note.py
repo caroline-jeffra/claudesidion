@@ -35,7 +35,6 @@ from __future__ import annotations
 import argparse
 import fcntl
 import hashlib
-import os
 import re
 import subprocess
 import sys
@@ -44,27 +43,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "hooks"))
 
+from claudesidion_paths import resolve_vault  # noqa: E402
 from vault_maintain import shortest_ref, suffix_counts  # noqa: E402
 
 SUPERSESSION_KEYS = ("supersedes", "superseded_by")
-
-
-def resolve_vault(explicit: str | None) -> Path | None:
-    """Same order as the hooks: --vault, $OBSIDIAN_VAULT, ~/.claude/obsidian-vault, default."""
-    if explicit:
-        return Path(explicit).expanduser()
-    env = os.environ.get("OBSIDIAN_VAULT", "").strip()
-    if env:
-        return Path(env).expanduser()
-    cfg = Path.home() / ".claude" / "obsidian-vault"
-    if cfg.is_file():
-        line = cfg.read_text(encoding="utf-8").splitlines()[:1]
-        if line and line[0].strip():
-            raw = line[0].strip()
-            if raw.startswith("$HOME"):
-                raw = str(Path.home()) + raw[len("$HOME"):]
-            return Path(raw).expanduser()
-    return Path.home() / "ObsidianVault"
 
 
 def is_versioned(vault: Path) -> bool:

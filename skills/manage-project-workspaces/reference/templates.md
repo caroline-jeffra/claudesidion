@@ -33,9 +33,10 @@ The vault syncs between machines, and an absolute path is only ever correct on o
 row's path is recorded **relative to that machine's code root**.
 
 **Resolving the code root**, in order: the `CODE_ROOT` environment variable, then
-`~/.claude/code-root` (one line, the root's path — whitespace trimmed, a leading `~/` or `$HOME/`
-expanded), then the default `~/code`. This is deliberately the same three-tier shape as the vault
-path, for the same reason: profile exports do not reach hook shells.
+`${XDG_CONFIG_HOME:-~/.config}/claudesidion/code-root`, then the legacy `~/.claude/code-root` (one
+line each, the root's path — whitespace trimmed, a leading `~/` or `$HOME/` expanded), then the
+default `~/code`; `claudesidion code-root` prints the result. This is deliberately the same shape as
+the vault path, for the same reason: profile exports do not reach hook shells.
 
 - **A relative row** (`some-repo`, `nested/some-repo`) resolves against the root. This is the normal
   form and what you write when adding a repo.

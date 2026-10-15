@@ -9,11 +9,7 @@ Produce one durable, career-facing document per project describing what the user
 hard, and what it demonstrates — written so it can be lifted into a CV, a LinkedIn update, a 360
 review, or a blog-post outline without being rewritten each time.
 
-**Vault location:** resolve in this order — (1) the `OBSIDIAN_VAULT` environment variable, (2) the
-config file `~/.claude/obsidian-vault` (one line: the vault's absolute path), (3) the default
-`~/ObsidianVault`. If none of the three yields an existing directory, ask the user where their vault
-is and write the answer to `~/.claude/obsidian-vault` so every future session and hook finds it. Use
-the resolved absolute path (written below as `$OBSIDIAN_VAULT`) for every read/write.
+**Vault location:** resolve in this order — (1) the `OBSIDIAN_VAULT` environment variable, (2) the config file `${XDG_CONFIG_HOME:-~/.config}/claudesidion/vault`, (3) the legacy config file `~/.claude/obsidian-vault`, (4) the default `~/ObsidianVault`. A config file holds one line, the vault's path (whitespace trimmed, a leading `~/` or `$HOME/` expanded); `claudesidion vault-path` prints the result. If none of them yields an existing directory, ask the user where their vault is and write the answer to `~/.config/claudesidion/vault` (creating the folder) so every future session and hook finds it. Use the resolved absolute path (written below as `$OBSIDIAN_VAULT`) for every read/write.
 
 You normally run this while the working directory is *the project's repo*, not the vault. Address the
 vault by absolute path; derive the project from the working directory.
