@@ -1,4 +1,4 @@
-# dev-workbook
+# Developer's Workbook
 
 Working memory for coding agents, kept in a plain markdown vault. Skills and session hooks give every repo a durable workspace — what's next, what was decided, what is unfinished — plus notes, imported project context and career-facing contribution summaries.
 
