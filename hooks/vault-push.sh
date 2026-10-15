@@ -164,17 +164,18 @@ classify() {
 }
 
 # -z gives NUL-delimited entries, immune to newlines in filenames. Status codes are the first
-# two characters; the path follows after a space. Renames report "old -> new"; take the new side.
+# two characters; the path follows after a space. A rename or copy is two entries, "R  new" and
+# then the bare old path, which carries no status and must not be parsed as one; the old side's
+# removal is already staged and goes into the commit with the new side.
 #
 # --untracked-files=all is essential: the default collapses a wholly-untracked directory into a
 # single "?? dir/" entry, so a secret inside a new directory would never be inspected and the
 # whole directory would be staged. Asking for every file means every file gets classified.
 while IFS= read -r -d '' entry; do
-  path="${entry:3}"
-  case "$path" in
-    *" -> "*) path="${path##* -> }" ;;
+  classify "${entry:3}" "${entry:1:1}"
+  case "${entry:0:1}" in
+    R|C) IFS= read -r -d '' _ ;;
   esac
-  classify "$path" "${entry:1:1}"
 done < <(git -C "$VAULT" -c core.quotepath=off status --porcelain -z --untracked-files=all 2>/dev/null)
 
 if [ "${#skipped_secret[@]}" -gt 0 ]; then

@@ -64,6 +64,15 @@ gitq "$v" rm -q "Projects/Note.md"
 run_hook vault-push.sh "$v"
 assert_eq "" "$(gitq "$v" status --porcelain)" 'only a staged deletion: still committed'
 
+# With -z, git reports a staged rename as two records, "R  new" then the bare old path. Parsing
+# the old path as a status line cut its first three characters off, so every rename was reported
+# as a path outside the known folders ("jects/Old/Note.md").
+v="$(build_vault push-staged-rename)"
+gitq "$v" mv Projects Resources
+run_hook vault-push.sh "$v"
+assert_eq "" "$(gitq "$v" status --porcelain)" 'staged rename: committed'
+assert_not_contains "$HOOK_OUT" 'outside the vault' 'staged rename: old path not reported as unowned'
+
 # Session-end output reaches no one, so what the hook reports is also recorded for the next start.
 v="$(build_vault push-relay)"
 printf 'x\n' > "$v/stray.txt"
