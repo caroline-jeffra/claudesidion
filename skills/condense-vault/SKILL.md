@@ -1,6 +1,6 @@
 ---
 name: condense-vault
-description: Weekly cleanup routine for the user's Obsidian vault — reconciles project workspaces against their note formats (strips stale "Next" pointers, dead references and stacked log entries, renames off-pattern notes, trims over-length notes, whatever their age), condenses stale content (untouched >3 months) down to bullet points everywhere, and outside project workspaces also deletes records of finished work older than that. Use when the user says "condense the vault", "clean up the vault", "run the vault cleanup", or when a SessionStart reminder from this plugin says the weekly condense run is due.
+description: Weekly cleanup routine for the user's markdown vault (Obsidian, Foam, …) — reconciles project workspaces against their note formats (strips stale "Next" pointers, dead references and stacked log entries, renames off-pattern notes, trims over-length notes, whatever their age), condenses stale content (untouched >3 months) down to bullet points everywhere, and outside project workspaces also deletes records of finished work older than that. Use when the user says "condense the vault", "clean up the vault", "run the vault cleanup", or when a SessionStart reminder from this plugin says the weekly condense run is due.
 ---
 
 # Condensing the vault
@@ -54,6 +54,8 @@ Each line is `<workspace>/<path>: <code> — <detail>`. Work through them by cod
 | `unclosed-thread` | Close the thread as in "Closing a thread" in [structure.md](../manage-project-workspaces/reference/structure.md): move decisions, durable knowledge and leftover items to their own notes, then reduce it to the closing stub. Leftover items that fit nowhere go in the report for the user to decide on — never drop them silently. |
 | `missing-section` | Add the section the template requires: `## Next up` in an Overview (seed it from open threads and the newest log), `## TL;DR` in research, the playbook headings in a playbook. |
 | `hard-wrap` | Join the wrapped lines into one line per block. |
+| `stacked-keys` | Turn the run of `**Key:** value` lines into list items (`- **Key:** value`), or put a blank line between them. Without one, CommonMark viewers join them into a single paragraph. |
+| `table-alias` | Rewrite each `[[Target\|text]]` in a table cell as plain `[[Target]]`. An alias pipe splits the row in viewers that ignore the escape; if the cell then reads badly, move the link out of the table. |
 
 Rules for this pass:
 
@@ -80,7 +82,7 @@ done
 
 Two portability notes baked into that snippet: string `<` comparison inside `[ ]` is bash-only (it breaks under zsh — compare via `sort` instead), and `core.quotepath=off` is required or filenames with non-ASCII characters (em-dashes, arrows) come out quoted and their dates come back empty.
 
-Scan `Notes/`, `Resources/`, `Inbox/`, `Archived/`, `Projects/`, and loose root notes. Never touch `.obsidian/`, attachments, or non-markdown files.
+Scan `Notes/`, `Resources/`, `Inbox/`, `Archived/`, `Projects/`, and loose root notes. Never touch a dot-directory (`.obsidian/`, `.vscode/`, `.foam/`, `.git/`, …), attachments, or non-markdown files — dot-directories hold viewer settings and templates, not notes.
 
 **Never condense or delete anything under `Contributions/`.** Those are living career summaries
 maintained by `summarize-contribution` — one per project, updated in place over a project's whole
@@ -159,7 +161,7 @@ Outside `Projects/`, in rough order of how much accumulates there:
 - **Loose root notes** other than the ones the plugin maintains.
 
 **Never delete** `Home.md`, `TasksArchive.md`, `WorkPlanning.md`, anything under
-`Contributions/`, or `.obsidian/`.
+`Contributions/`, or any dot-directory (`.obsidian/`, `.vscode/`, `.foam/`, …).
 
 ## Step 4 — Condense
 

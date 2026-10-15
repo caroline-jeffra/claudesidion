@@ -52,7 +52,8 @@ glab api "projects/:id/milestones?state=active"
 ```bash
 # Tracked docs
 ls README* 2>/dev/null; find docs -maxdepth 2 -name '*.md' 2>/dev/null
-ls CLAUDE.md 2>/dev/null; find .claude -maxdepth 2 -type f 2>/dev/null
+ls CLAUDE.md AGENTS.md GEMINI.md .github/copilot-instructions.md 2>/dev/null
+find .claude .cursor/rules -maxdepth 2 -type f 2>/dev/null
 find . -maxdepth 2 -iregex '.*\(architecture\|adr\).*\.md' 2>/dev/null
 
 # Temp / scratch / untracked / ignored working files
@@ -71,8 +72,8 @@ Append/merge into the structured workspace; never overwrite. Dedupe on the key s
 |---|---|---|---|
 | README intro | `Overview.md` | "What this is" — two or three sentences | — |
 | Issue/PR tracker URLs | `Overview.md` | Trackers section | url |
-| docs/, CLAUDE.md, .claude/ | `Overview.md` or `Research/<Subject>Reference.md` | One bullet each in the Overview, linked by repo path; a doc worth summarising gets its own research note | file path |
-| Open issues | `Threads/<NounPhrase>.md` | `- [ ] #<n> <title> ([link](url))` under `## Open`, grouped by theme into one thread | issue number |
+| docs/, agent instruction files (CLAUDE.md, AGENTS.md, GEMINI.md, .cursor/rules, copilot-instructions.md, .claude/) | `Overview.md` or `Research/<Subject>Reference.md` | One bullet each in the Overview, linked by repo path; a doc worth summarising gets its own research note | file path |
+| Open issues | `Threads/<NounPhrase>.md` | `- [ ] issue <n>: <title> ([link](url))` under `## Open`, grouped by theme into one thread — never a bare `#<n>`, which viewers read as a tag | issue number |
 | TODOs in temp files | `Threads/<NounPhrase>.md` | `- [ ] <action> (from <file>)` | action text |
 | Open PRs/MRs | `Threads/<NounPhrase>.md` | `- [ ] PR/MR !<n> <title> ([link](url))` | pr/mr number |
 | Runbooks, setup or upgrade guides | `Playbooks/<Subject>Playbook.md` | Playbook template, `status: reference` | file path |

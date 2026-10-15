@@ -37,6 +37,18 @@ run_hook vault-pull.sh "$v"
 assert_eq 0 "$HOOK_RC" 'vault not a git repo: exit 0'
 assert_empty "$HOOK_OUT" 'vault not a git repo: silent'
 
+assert_eq 0 "$([ -e "$v/.git/claudesidion-hooks" ] && echo 1 || echo 0)" \
+  'vault not a git repo: no heartbeat written'
+
+# ---------------------------------------------------------------------------
+section 'Heartbeat tells the skills the hooks are installed'
+# ---------------------------------------------------------------------------
+
+v="$(build_vault pull-heartbeat)"
+run_hook vault-pull.sh "$v"
+assert_eq 1 "$([ -s "$v/.git/claudesidion-hooks" ] && echo 1 || echo 0)" 'heartbeat written inside .git'
+assert_empty "$(git -C "$v" status --porcelain)" 'heartbeat leaves the work tree clean'
+
 # ---------------------------------------------------------------------------
 section 'Flushing commits stranded by a cancelled SessionEnd push'
 # ---------------------------------------------------------------------------

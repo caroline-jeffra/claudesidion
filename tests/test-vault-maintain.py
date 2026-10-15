@@ -436,7 +436,7 @@ try:
 
     # --- clean, one per type
     write(ws / "Overview.md",
-          "---\ntype: overview\nstatus: active\n---\n\n# demo\n\n**Repo path:** `demo`\n"
+          "---\ntype: overview\nstatus: active\n---\n\n# demo\n\n**Repo path:** `demo`\n\n"
           "**Current focus:** cutover\n\n## Next up\n\n- Copy data — [[CutoverTracking]]\n")
     write(ws / "ProgressLog.md",
           "---\ntype: log-index\nstatus: reference\n---\n\n# Progress log — demo\n\n- **[[2026-10-01]]** — did a thing\n")
@@ -455,7 +455,7 @@ try:
           "**Outcome:** shipped.\n\n**Moved to:** [[UseNewHost]]\n")
     write(ws / "Research" / "HostCostsAnalysis.md",
           "---\ntype: research\nstatus: reference\n---\n\n# Host costs — analysis\n\n## TL;DR\n\n- cheaper\n\n"
-          "Came out of [[OldWork]].\n\n**Source:** a\n**Date:** b\n")
+          "Came out of [[OldWork]].\n\n- **Source:** a\n- **Date:** b\n")
     write(ws / "Playbooks" / "CutoverToNewHostPlaybook.md",
           "---\ntype: playbook\nstatus: active\n---\n\n# Cutover to new host playbook\n\n**Goal:** g\n\n"
           "**Done when:** d\n\n## Steps\n\n- [ ] **1. Copy**\n")
@@ -502,6 +502,13 @@ try:
     write(tmp6 / "Projects" / "home-thing" / ".vault-config.json", json.dumps({"project": "ht", "topics": {}}))
 
     # Lint runs on a maintained vault in practice: frontmatter filled in, indexes generated.
+    write(ws / "Notes" / "StackedKeys.md",
+          "---\ntype: note\nstatus: reference\n---\n\n# Stacked keys\n\n"
+          "**Owner:** ops\n**Host:** new\n")
+    write(ws / "Notes" / "TableAlias.md",
+          "---\ntype: note\nstatus: reference\n---\n\n# Table alias\n\n"
+          "| Day | Link |\n| --- | --- |\n| 1 | [[UseOldHost\\|old host]] |\n| 2 | [[UseOldHost]] |\n\n"
+          "Prose keeps its [[UseOldHost|alias]], and code keeps `| [[a\\|b]] |`.\n")
     run_maintain(tmp6)
     check((ws / "TopicIndex.md").exists(), "fixture has generated indexes to ignore")
     findings = lint_vault(tmp6)
@@ -529,10 +536,15 @@ try:
         "ACME-13 old style.md": {"bad-name"},
         "Tasks Archive.md": {"legacy-name"},
         "Link checker.md": {"bad-name"},
+        "StackedKeys.md": {"stacked-keys"},
+        "TableAlias.md": {"table-alias"},
     }
     for name, want in expect.items():
         got = codes_for(findings, name)
         check(want <= got, f"{name}: reports {sorted(want)}", f"got {sorted(got)}")
+    alias = [f for f in findings if "TableAlias.md: table-alias" in f]
+    check(len(alias) == 1 and "1 aliased" in alias[0],
+          "table-alias counts only aliased links in table rows", "\n".join(alias))
 
     check(any(f.startswith("Projects/home-thing/: bad-name") for f in findings),
           "a non-PascalCase workspace folder is reported", "\n".join(findings))
@@ -607,6 +619,8 @@ try:
     check("[[2026-10-02]]" in topic, "a unique log date stays bare", topic)
     check("[[WarmTheCache|Warm the cache]]" in topic or "[[WarmTheCache]]" in topic,
           "a unique note stays bare", topic)
+    check("[C](#c)" in topic and "[[#" not in topic,
+          "letter nav is a standard anchor link, not a heading wikilink", topic)
     threads = (alpha / "ThreadsIndex.md").read_text()
     check("[[WarmTheCache|Warm the cache]]" in threads, "thread index link is bare and titled", threads)
 

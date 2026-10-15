@@ -21,9 +21,11 @@ tags: [index]
 
 | Repo path | Workspace |
 |-----------|-----------|
-| some-repo | [[Some-Repo/Home\|Some-Repo]] |
-| /opt/src/odd-one | [[Odd-One/Home\|Odd-One]] |
+| some-repo | [[SomeRepo/Overview]] |
+| /opt/src/odd-one | [[OddOne/Overview]] |
 ```
+
+The Workspace cell is a plain link to the workspace's `Overview` — never aliased, since an alias pipe splits the row in viewers that ignore the `\|` escape.
 
 ### Paths are machine-relative
 
@@ -350,9 +352,9 @@ tracked_through: YYYY-MM-DD
 
 | Phase | Status | Estimate | Actual | Variance | Sittings | Dates | Links |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Planning | done | — | 3.37 | — | 8 | 08-15 | [[Takeoffs/Log/2026-08-15\|2026-08-15]] |
+| Planning | done | — | 3.37 | — | 8 | 08-15 | [[Takeoffs/Log/2026-08-15]] |
 | **0 Walking skeleton** | done | 12 | 7.89 | −34% | 6 | 08-16 → 08-19 | [[WalkingSkeletonPlaybook]] |
-| 0.1–0.5 Scaffold and CI | done | 4 | 2.25 | −44% | 1 | 08-16 | [[Takeoffs/Log/2026-08-16\|2026-08-16]] |
+| 0.1–0.5 Scaffold and CI | done | 4 | 2.25 | −44% | 1 | 08-16 | [[Takeoffs/Log/2026-08-16]] |
 | **1 Data model and CRUD** | active | 25 | 11.13 | — | 13 | 08-23 → | [[DataModelAndCrudPlaybook]] |
 | **Total** | | 165 | 22.39 | | 28 | | |
 

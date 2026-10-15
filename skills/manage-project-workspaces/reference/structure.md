@@ -105,12 +105,12 @@ Not every ticket needs one. A ticket gets a note when there is something to say 
 Every note is written for **someone scanning for one fact**, not someone reading start to finish.
 
 - **The first line under any heading is the answer.** Setup and reasoning come after, if at all.
-- **Bullets and `**Key:** value` pairs over paragraphs.** A paragraph is at most three short sentences.
+- **Bullets and `**Key:** value` pairs over paragraphs.** A paragraph is at most three short sentences. Never stack `**Key:**` lines directly under each other: CommonMark viewers join them into one paragraph. Make each a list item, or separate them with a blank line.
 - **Outcome, not process.** Write what is true or what was decided — never "first I tried X, then Y". Dead ends earn one bullet in a log's `Learned`, not a narrative.
 - **One fact, one place.** Link the note that owns a fact instead of restating it. Link the **specific** note — `[[FrameworkIsFastapiOverDjango]]`, never `[[DecisionsIndex|the decisions]]`.
 - **No stale pointers.** When something is finished, superseded or deleted, remove references to it from current-state notes rather than annotating them ("~~old plan~~", "now done", "see update below").
 - **No commit SHAs, step numbers or session narration** in current-state notes. Link a PR if the provenance matters.
-- **One continuous line per block** — no hard line breaks inside a paragraph, bullet or blockquote. Obsidian soft-wraps.
+- **One continuous line per block** — no hard line breaks inside a paragraph, bullet or blockquote. Viewers soft-wrap.
 - **Bold only the load-bearing claim.** If everything is bold, nothing is.
 
 ### Length budgets
@@ -139,6 +139,7 @@ Templates for every type are in [templates.md](templates.md).
 | A note in any type folder | `[[NoteName]]` | One note per fact means names are unique; a bare link survives a workspace rename |
 | `Overview`, `ProgressLog`, or any generated index | `[[Workspace/Overview]]`, even from inside that workspace | These exist once per workspace by design, so the bare name is ambiguous vault-wide |
 | A log day whose date another workspace also logged | `[[Workspace/Log/2026-10-04\|2026-10-04]]` | Workspaces often log the same day; the alias keeps the date readable |
+| Any link inside a table cell | `[[Workspace/Log/2026-10-04]]` — no alias | An alias pipe splits the row in viewers that ignore the `\|` escape |
 
 Wikilinks have **no `../` syntax** — a vault-relative path is the only disambiguator. There is no same-folder exception: viewers disagree on tie-breaks, so an ambiguous link is wrong even where it happens to land right. The lint reports one as `ambiguous-link`; `scripts/qualify_links.py` fixes them in bulk.
 

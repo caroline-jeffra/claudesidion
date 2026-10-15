@@ -84,7 +84,7 @@ try:
     check("[[Alpha/Overview|Overview]]" in out, "a structural file is qualified")
     check("![[2026-10-01]]" in out, "embeds are untouched")
     check("`[[2026-10-01]]`" in out and "```\n[[2026-10-01]]\n```" in out, "code is untouched")
-    check("| day | [[Alpha/Log/2026-10-01\\|2026-10-01]] |" in out, "the alias pipe is escaped in a table", out)
+    check("| day | [[Alpha/Log/2026-10-01]] |" in out, "no alias is added inside a table", out)
     check((v / "Resources/Loose.md").read_text().startswith("[[2026-10-01]]"),
           "notes outside a workspace are untouched")
     check(not left, "nothing left unresolved", str(left))
