@@ -36,11 +36,31 @@ VAULT="${VAULT:-$HOME/ObsidianVault}"
 
 stranded=""
 
+# claim_version — record this plugin's version in the vault (Projects/.claudesidion-version) so
+# that a session started before an upgrade, on this machine or another, finds a newer version
+# recorded when it exits and leaves the indexes alone. Prints a notice when this session is the
+# stale one. Needs Python; without it the guard is simply not armed.
+claim_version() {
+  local py script
+  script="${CLAUDE_PLUGIN_ROOT:-$(dirname "$0")/..}/hooks/vault_maintain.py"
+  [ -f "$script" ] || return 0
+  for py in python3 python; do
+    if command -v "$py" >/dev/null 2>&1; then
+      "$py" "$script" --claim "$VAULT" 2>/dev/null
+      return 0
+    fi
+  done
+}
+
 # Need git; if absent, stay silent.
 command -v git >/dev/null 2>&1 || exit 0
 
-# Skip if the vault is not a git work tree (mirrors the skills' "skip if not a git repo").
-git -C "$VAULT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
+# Skip if the vault is not a git work tree (mirrors the skills' "skip if not a git repo"). A local
+# vault still gets its version claimed: a stale session on this machine is the same hazard.
+if ! git -C "$VAULT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  [ -d "$VAULT" ] && claim_version >/dev/null
+  exit 0
+fi
 
 # Heartbeat: tells the skills the sync hooks are installed and ran this session, so they leave
 # git to the hooks. Without a fresh one — a harness with no hooks — the skills sync themselves.
@@ -74,9 +94,13 @@ fi
 
 if git -C "$VAULT" pull --ff-only >/dev/null 2>&1; then
   short="$(git -C "$VAULT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
-  emit_context "${stranded:+$stranded }Obsidian vault pulled to latest (${short})."
+  status="Obsidian vault pulled to latest (${short})."
 else
-  emit_context "${stranded:+$stranded }Obsidian vault pull failed (offline, no remote, or non-fast-forward); working from local state."
+  status="Obsidian vault pull failed (offline, no remote, or non-fast-forward); working from local state."
 fi
+
+# After the pull, so the comparison is against the version other machines recorded.
+stale="$(claim_version)"
+emit_context "${stranded:+$stranded }${status}${stale:+ $stale}"
 
 exit 0

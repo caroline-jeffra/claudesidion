@@ -6,7 +6,8 @@ against a workspace that already has the right shape, and it is deliberately
 constrained:
 
   * It NEVER deletes a file, moves a file, or edits a note's body.
-  * It only rewrites index notes, and only the frontmatter of ordinary notes.
+  * It only rewrites index notes, the frontmatter of ordinary notes, and the one-line
+    `Projects/.claudesidion-version` record.
   * Every write is compare-before-write, so a no-op run touches nothing.
   * It fails open: any unexpected error exits 0 with a message on stderr, so a
     bug here can never break a session or block the vault push.
@@ -21,6 +22,9 @@ What it does, per workspace:
 With `--lint`, it writes nothing at all: it reports every note that breaks the format contract
 (skills/manage-project-workspaces/reference/structure.md), one line each, for `condense-vault` to
 work through. `--lint --count` prints only the number of findings.
+
+With `--claim`, it only records this plugin's version in the vault (see "Stale-session guard"
+below) — the SessionStart hook runs it so the record lands before any older session exits.
 
 A workspace opts in by containing a `.vault-config.json`. Workspaces without
 one are ignored entirely, so this is safe to run across a mixed vault where
@@ -1172,6 +1176,59 @@ def lint(root: Path, cfg: Config, notes: list[Note], names: VaultNames, vault: P
     return out
 
 
+# ---------------------------------------------------------------- stale-session guard
+#
+# Hooks are loaded when a session starts, so a session begun before a plugin upgrade still runs
+# the old hooks when it exits, and an old maintainer regenerates indexes in the old format. The
+# vault therefore records the newest plugin version that has touched it, in a file under
+# Projects/ so the session commit syncs it to every machine, and a maintainer older than that
+# record does nothing. Versions that cannot be read disable the guard rather than the maintainer.
+
+VERSION_FILE = Path("Projects") / ".claudesidion-version"
+
+
+def parse_version(text: str | None) -> tuple[int, int, int] | None:
+    m = re.fullmatch(r"\s*v?(\d+)\.(\d+)\.(\d+)\s*", text or "")
+    return (int(m[1]), int(m[2]), int(m[3])) if m else None
+
+
+def own_version() -> str | None:
+    manifest = Path(__file__).resolve().parent.parent / ".claude-plugin" / "plugin.json"
+    try:
+        version = json.loads(manifest.read_text(encoding="utf-8")).get("version")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return version if parse_version(version) else None
+
+
+def recorded_version(vault: Path) -> str | None:
+    try:
+        text = (vault / VERSION_FILE).read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return text if parse_version(text) else None
+
+
+def newer_recorded(vault: Path, mine: str | None) -> str | None:
+    """The recorded version when it is newer than this plugin's, else None."""
+    rec = recorded_version(vault)
+    if mine and rec and parse_version(rec) > parse_version(mine):
+        return rec
+    return None
+
+
+def claim(vault: Path, mine: str | None) -> None:
+    """Record this plugin's version unless a newer one is already recorded.
+
+    Only into an existing Projects/ — creating that folder is the skills' call, behind consent.
+    """
+    if not mine or not (vault / "Projects").is_dir():
+        return
+    rec = recorded_version(vault)
+    if rec is None or parse_version(mine) > parse_version(rec):
+        (vault / VERSION_FILE).write_text(mine + "\n", encoding="utf-8")
+
+
 # ---------------------------------------------------------------- main
 
 
@@ -1312,8 +1369,23 @@ def main() -> int:
     paths = [a for a in args if not a.startswith("--")]
     vault = Path(paths[0]) if paths else None
     if vault is None or not vault.is_dir():
-        print("usage: vault_maintain.py [--lint [--count]] <vault-path>", file=sys.stderr)
+        print("usage: vault_maintain.py [--lint [--count] | --claim] <vault-path>", file=sys.stderr)
         return 0                      # fail open
+
+    if not lint_mode:
+        mine = own_version()
+        newer = newer_recorded(vault, mine)
+        if newer:
+            print(f"claudesidion {newer} has already updated this vault, but this session runs "
+                  f"{mine}; index maintenance is off until this plugin is updated "
+                  "(/plugin marketplace update claudesidion, then /reload-plugins).")
+            return 0
+        try:
+            claim(vault, mine)
+        except OSError as exc:
+            print(f"vault-maintain: could not record version: {exc}", file=sys.stderr)
+        if "--claim" in args:
+            return 0
 
     if lint_mode:
         try:

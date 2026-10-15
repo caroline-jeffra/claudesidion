@@ -642,6 +642,58 @@ finally:
     shutil.rmtree(tmp7, ignore_errors=True)
 
 # ---------------------------------------------------------------------------
+section("Stale-session guard: an older maintainer leaves a newer vault alone")
+# ---------------------------------------------------------------------------
+
+tmp8 = Path(tempfile.mkdtemp(prefix="claudesidion-vm-tests."))
+real_own = vm.own_version
+try:
+    ws = tmp8 / "Projects" / "Demo"
+    write(ws / ".vault-config.json", json.dumps({"project": "demo", "topics": {}}))
+    write(ws / "Overview.md", "---\ntype: overview\nstatus: active\n---\n\n# demo\n")
+    record = tmp8 / "Projects" / ".claudesidion-version"
+
+    check(vm.parse_version(real_own()) is not None, "own_version reads plugin.json")
+
+    vm.own_version = lambda: "2.4.0"
+    run_maintain(tmp8)
+    check(record.read_text() == "2.4.0\n", "a maintenance run records its version")
+    check((ws / "TopicIndex.md").exists(), "and maintains as normal")
+
+    (ws / "TopicIndex.md").unlink()
+    vm.own_version = lambda: "2.3.9"
+    run_maintain(tmp8)
+    check(not (ws / "TopicIndex.md").exists(), "an older maintainer writes nothing")
+    check(record.read_text() == "2.4.0\n", "and never lowers the recorded version")
+
+    vm.own_version = lambda: "2.10.0"
+    argv, sys.argv = sys.argv, ["vault_maintain.py", "--claim", str(tmp8)]
+    try:
+        vm.main()
+    finally:
+        sys.argv = argv
+    check(record.read_text() == "2.10.0\n", "--claim raises the record (numeric, not string, order)")
+    check(not (ws / "TopicIndex.md").exists(), "--claim maintains nothing")
+
+    record.write_text("garbage\n")
+    vm.own_version = lambda: "2.3.9"
+    run_maintain(tmp8)
+    check((ws / "TopicIndex.md").exists(), "an unreadable record disables the guard, not the maintainer")
+    check(record.read_text() == "2.3.9\n", "and is replaced with a valid one")
+
+    bare = tmp8 / "bare"
+    bare.mkdir()
+    vm.claim(bare, "9.9.9")
+    check(not (bare / "Projects").exists(), "claim never creates Projects/")
+
+    vm.own_version = lambda: None
+    run_maintain(tmp8)
+    check(record.read_text() == "2.3.9\n", "an unknown own version claims nothing")
+finally:
+    vm.own_version = real_own
+    shutil.rmtree(tmp8, ignore_errors=True)
+
+# ---------------------------------------------------------------------------
 print()
 if not FAIL:
     print(f"\033[32m{PASS} passed\033[0m")

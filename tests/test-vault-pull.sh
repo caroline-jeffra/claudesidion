@@ -47,7 +47,29 @@ section 'Heartbeat tells the skills the hooks are installed'
 v="$(build_vault pull-heartbeat)"
 run_hook vault-pull.sh "$v"
 assert_eq 1 "$([ -s "$v/.git/claudesidion-hooks" ] && echo 1 || echo 0)" 'heartbeat written inside .git'
-assert_empty "$(git -C "$v" status --porcelain)" 'heartbeat leaves the work tree clean'
+assert_empty "$(git -C "$v" status --porcelain -- . ':!Projects/.claudesidion-version')" 'heartbeat leaves the work tree clean'
+
+# ---------------------------------------------------------------------------
+section 'Stale-session guard: the plugin version is recorded at session start'
+# ---------------------------------------------------------------------------
+
+mine="$(sed -n 's/.*"version": *"\([0-9.]*\)".*/\1/p' "$HOOKS/../.claude-plugin/plugin.json")"
+
+v="$(build_vault pull-version)"
+run_hook vault-pull.sh "$v"
+assert_eq "$mine" "$(cat "$v/Projects/.claudesidion-version" 2>/dev/null)" 'records this plugin version'
+assert_not_contains "$HOOK_OUT" 'maintenance is off' 'current plugin: no stale notice'
+
+v="$(build_vault pull-newer)"
+printf '99.0.0\n' > "$v/Projects/.claudesidion-version"
+run_hook vault-pull.sh "$v"
+assert_eq '99.0.0' "$(cat "$v/Projects/.claudesidion-version")" 'never lowers a newer record'
+assert_contains "$HOOK_OUT" 'index maintenance is off' 'stale plugin: the session is told'
+
+v="$(build_vault pull-version-local --no-git)"
+run_hook vault-pull.sh "$v"
+assert_eq "$mine" "$(cat "$v/Projects/.claudesidion-version" 2>/dev/null)" 'local vault: version still recorded'
+assert_empty "$HOOK_OUT" 'local vault: still silent'
 
 # ---------------------------------------------------------------------------
 section 'Flushing commits stranded by a cancelled SessionEnd push'
