@@ -14,6 +14,12 @@ are minor.
 
 ## [Unreleased]
 
+## [3.0.1] — 2026-10-15
+
+### Fixed
+
+- **A renamed note is no longer reported as a path outside the vault's known folders.** Git lists a staged rename as two records, the new path and then the old one with no status code; the session-end hook parsed the old path as a status line and cut its first three characters off, so renaming a workspace reported every file in it as unowned (`jects/…`, `tributions/…`). The rename itself was always committed — only the warning was wrong.
+
 ## [3.0.0] — 2026-10-15
 
 **claudesidion is now dev-workbook.** The old name tied the plugin to Claude Code and Obsidian; it is a working memory for any coding agent, in any markdown viewer. The vault layout is unchanged — this is breaking only because the plugin's name changed.
@@ -307,7 +313,7 @@ They are listed because they describe what the plugin used to do to a vault.
   internal hostnames, real ticket keys, and an internal system name. The repository was then rebuilt
   from a single commit so no pre-scrub object remains reachable.
 
-[Unreleased]: https://github.com/caroline-jeffra/dev-workbook/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/caroline-jeffra/dev-workbook/compare/v3.0.1...HEAD
 [1.0.1]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v1.0.1
 [1.0.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v1.0.0
 [0.4.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.4.0
