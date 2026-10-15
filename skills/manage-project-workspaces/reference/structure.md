@@ -288,5 +288,5 @@ It never deletes a file, never moves a file, and never edits a note body.
 It also has a **lint mode** that reports, without fixing, every note that breaks this contract: over-budget notes, stray root files, pre-2.0 names, threads that are finished but not closed, `Next:` lines or stacked blocks in logs, links to superseded decisions or finished threads from current-state notes, broken links, links to an index where a specific note belongs, names that are not PascalCase (vault-wide, workspace folders included), missing required sections, and hard-wrapped prose. `condense-vault` runs it and fixes what it finds.
 
 ```bash
-claudesidion lint            # or: python3 "<plugin root>/bin/claudesidion" lint
+dev-workbook lint            # or: python3 "<plugin root>/bin/dev-workbook" lint
 ```

@@ -94,7 +94,7 @@ for label, raw in SAFE.items():
 section("[T1.4] End to end: a lossy note survives a maintenance run")
 # ---------------------------------------------------------------------------
 
-tmp = Path(tempfile.mkdtemp(prefix="claudesidion-vm-tests."))
+tmp = Path(tempfile.mkdtemp(prefix="dev-workbook-vm-tests."))
 try:
     ws = tmp / "Projects" / "Demo"
     (ws / "Notes").mkdir(parents=True)
@@ -192,7 +192,7 @@ finally:
 section("[T2.1] Threads and Decisions indexes are generated")
 # ---------------------------------------------------------------------------
 
-tmp2 = Path(tempfile.mkdtemp(prefix="claudesidion-vm-t21."))
+tmp2 = Path(tempfile.mkdtemp(prefix="dev-workbook-vm-t21."))
 try:
     ws = tmp2 / "Projects" / "Demo"
     for folder in ("Threads", "Decisions", "Notes"):
@@ -277,7 +277,7 @@ finally:
 section("[T2.9] Workspace discovery is not pinned to one depth")
 # ---------------------------------------------------------------------------
 
-tmp3 = Path(tempfile.mkdtemp(prefix="claudesidion-vm-t29."))
+tmp3 = Path(tempfile.mkdtemp(prefix="dev-workbook-vm-t29."))
 try:
     CFG = ('{"project":"%s","folders":{"note":"Notes"},"topics":{},'
            '"root_notes":[],"index_types":[],"generated_types":["index"]}')
@@ -330,7 +330,7 @@ section("Folder skeleton is fixed by the contract, not by config")
 # New workspaces omit "folders" entirely: the skeleton is fixed by the workspace
 # contract. If the default went missing, a note in Log/ with no declared type: would
 # stop being inferred as a log, and every doctype tag would silently disappear.
-tmp4 = Path(tempfile.mkdtemp(prefix="claudesidion-vm-tests."))
+tmp4 = Path(tempfile.mkdtemp(prefix="dev-workbook-vm-tests."))
 try:
     ws = tmp4 / "Projects" / "Demo"
     (ws / "Log").mkdir(parents=True)
@@ -368,7 +368,7 @@ finally:
 section("Playbooks: a fixed folder, tracked with the threads")
 # ---------------------------------------------------------------------------
 
-tmp5 = Path(tempfile.mkdtemp(prefix="claudesidion-vm-tests."))
+tmp5 = Path(tempfile.mkdtemp(prefix="dev-workbook-vm-tests."))
 try:
     ws = tmp5 / "Projects" / "Demo"
     (ws / "Playbooks").mkdir(parents=True)
@@ -429,7 +429,7 @@ def codes_for(findings: list[str], name: str) -> set[str]:
     }
 
 
-tmp6 = Path(tempfile.mkdtemp(prefix="claudesidion-vm-tests."))
+tmp6 = Path(tempfile.mkdtemp(prefix="dev-workbook-vm-tests."))
 try:
     ws = tmp6 / "Projects" / "Demo"
     write(ws / ".vault-config.json", json.dumps({"project": "demo", "topics": {}}))
@@ -590,7 +590,7 @@ finally:
 section("Links: generated and linted links name exactly one note")
 # ---------------------------------------------------------------------------
 
-tmp7 = Path(tempfile.mkdtemp(prefix="claudesidion-vm-tests."))
+tmp7 = Path(tempfile.mkdtemp(prefix="dev-workbook-vm-tests."))
 try:
     for proj in ("Alpha", "Beta"):
         w = tmp7 / "Projects" / proj
@@ -645,13 +645,13 @@ finally:
 section("Stale-session guard: an older maintainer leaves a newer vault alone")
 # ---------------------------------------------------------------------------
 
-tmp8 = Path(tempfile.mkdtemp(prefix="claudesidion-vm-tests."))
+tmp8 = Path(tempfile.mkdtemp(prefix="dev-workbook-vm-tests."))
 real_own = vm.own_version
 try:
     ws = tmp8 / "Projects" / "Demo"
     write(ws / ".vault-config.json", json.dumps({"project": "demo", "topics": {}}))
     write(ws / "Overview.md", "---\ntype: overview\nstatus: active\n---\n\n# demo\n")
-    record = tmp8 / "Projects" / ".claudesidion-version"
+    record = tmp8 / "Projects" / ".dev-workbook-version"
 
     check(vm.parse_version(real_own()) is not None, "own_version reads plugin.json")
 
@@ -689,6 +689,18 @@ try:
     vm.own_version = lambda: None
     run_maintain(tmp8)
     check(record.read_text() == "2.3.9\n", "an unknown own version claims nothing")
+
+    legacy = tmp8 / "Projects" / ".claudesidion-version"
+    legacy.write_text("2.6.0\n")
+    (ws / "TopicIndex.md").unlink()
+    vm.own_version = lambda: "2.5.0"
+    run_maintain(tmp8)
+    check(not (ws / "TopicIndex.md").exists(), "a newer pre-3.0 record still trips the guard")
+
+    vm.own_version = lambda: "3.0.0"
+    run_maintain(tmp8)
+    check(record.read_text() == "3.0.0\n", "the claim goes to the current file")
+    check(legacy.read_text() == "2.6.0\n", "and the pre-3.0 file is left alone")
 finally:
     vm.own_version = real_own
     shutil.rmtree(tmp8, ignore_errors=True)

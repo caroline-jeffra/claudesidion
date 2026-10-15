@@ -43,7 +43,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "hooks"))
 
-from claudesidion_paths import resolve_vault  # noqa: E402
+from dev_workbook_paths import resolve_vault  # noqa: E402
 from vault_maintain import shortest_ref, suffix_counts  # noqa: E402
 
 SUPERSESSION_KEYS = ("supersedes", "superseded_by")
@@ -186,7 +186,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     vault = vault.resolve()
     key = hashlib.sha1(str(vault).encode()).hexdigest()[:12]
-    with open(Path(tempfile.gettempdir()) / f"claudesidion-rename-{key}.lock", "w") as lock:
+    with open(Path(tempfile.gettempdir()) / f"dev-workbook-rename-{key}.lock", "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         try:
             links, files = rename(vault, a.old, a.new, a.dry_run)

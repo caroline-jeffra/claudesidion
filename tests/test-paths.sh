@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 # Tests for the shared path resolvers (hooks/lib.sh and its Python twin,
-# hooks/claudesidion_paths.py) and for the bin/claudesidion command that skills call.
+# hooks/dev_workbook_paths.py) and for the bin/dev-workbook command that skills call.
 
 . "$(dirname "$0")/lib.sh"
 
-printf '\033[1mpaths and the claudesidion command\033[0m\n'
+printf '\033[1mpaths and the dev-workbook command\033[0m\n'
 
-CLI="$REPO_ROOT/bin/claudesidion"
+CLI="$REPO_ROOT/bin/dev-workbook"
 # macOS's $TMPDIR ends in "/", so TEST_TMP holds a "//" that Python collapses and bash keeps.
 TEST_TMP="$(python3 -c 'import os, sys; print(os.path.normpath(sys.argv[1]))' "$TEST_TMP")"
 
 # in_home <home> <env assignments...> -- <command...> — run with an isolated HOME and no
-# inherited OBSIDIAN_VAULT / CODE_ROOT / XDG_CONFIG_HOME.
+# inherited DEVWB_VAULT / OBSIDIAN_VAULT / CODE_ROOT / XDG_CONFIG_HOME.
 in_home() {
   local home="$1"; shift
   local assigns=()
   while [ "$1" != "--" ]; do assigns+=("$1"); shift; done
   shift
-  env -u OBSIDIAN_VAULT -u CODE_ROOT -u XDG_CONFIG_HOME HOME="$home" ${assigns[@]+"${assigns[@]}"} "$@"
+  env -u DEVWB_VAULT -u OBSIDIAN_VAULT -u CODE_ROOT -u XDG_CONFIG_HOME HOME="$home" ${assigns[@]+"${assigns[@]}"} "$@"
 }
 
 sh_vault() { in_home "$1" "${@:2}" -- bash -c ". '$HOOKS/lib.sh'; resolve_vault"; }
@@ -43,27 +43,49 @@ h="$TEST_TMP/h-legacy"; mkdir -p "$h/.claude"
 printf '%s\n' "$h/LegacyVault" > "$h/.claude/obsidian-vault"
 check_both 'legacy file is still read' "$h/LegacyVault" "$h"
 
-mkdir -p "$h/.config/claudesidion"
-printf '%s\n' "$h/XdgVault" > "$h/.config/claudesidion/vault"
+mkdir -p "$h/.config/dev-workbook"
+printf '%s\n' "$h/XdgVault" > "$h/.config/dev-workbook/vault"
 check_both 'XDG file wins over legacy' "$h/XdgVault" "$h"
 
-check_both 'env var wins over both' "/env/vault" "$h" OBSIDIAN_VAULT=/env/vault
+check_both 'env var wins over both' "/env/vault" "$h" DEVWB_VAULT=/env/vault
 
-mkdir -p "$TEST_TMP/xdg/claudesidion"
-printf '%s\n' "$TEST_TMP/CustomXdg" > "$TEST_TMP/xdg/claudesidion/vault"
+mkdir -p "$TEST_TMP/xdg/dev-workbook"
+printf '%s\n' "$TEST_TMP/CustomXdg" > "$TEST_TMP/xdg/dev-workbook/vault"
 check_both '$XDG_CONFIG_HOME is honoured' "$TEST_TMP/CustomXdg" "$h" XDG_CONFIG_HOME="$TEST_TMP/xdg"
 
-h="$TEST_TMP/h-tilde"; mkdir -p "$h/.config/claudesidion"
-printf '  ~/Notes/Vault  \n' > "$h/.config/claudesidion/vault"
+h="$TEST_TMP/h-tilde"; mkdir -p "$h/.config/dev-workbook"
+printf '  ~/Notes/Vault  \n' > "$h/.config/dev-workbook/vault"
 check_both 'whitespace trimmed, leading ~ expanded' "$h/Notes/Vault" "$h"
 # shellcheck disable=SC2016  # a literal $HOME is what the config file holds
-printf '$HOME/V\n' > "$h/.config/claudesidion/vault"
+printf '$HOME/V\n' > "$h/.config/dev-workbook/vault"
 check_both 'leading $HOME expanded' "$h/V" "$h"
 
-h="$TEST_TMP/h-blank"; mkdir -p "$h/.config/claudesidion" "$h/.claude"
-printf '   \n' > "$h/.config/claudesidion/vault"
+h="$TEST_TMP/h-blank"; mkdir -p "$h/.config/dev-workbook" "$h/.claude"
+printf '   \n' > "$h/.config/dev-workbook/vault"
 printf '%s\n' "$h/LegacyVault" > "$h/.claude/obsidian-vault"
 check_both 'a blank XDG file falls through to legacy' "$h/LegacyVault" "$h"
+
+# ---------------------------------------------------------------------------
+section 'Pre-3.0 names are still read, after the current ones'
+# ---------------------------------------------------------------------------
+
+h="$TEST_TMP/h-pre3"; mkdir -p "$h/.config/claudesidion" "$h/.claude"
+printf '%s\n' "$h/LegacyVault" > "$h/.claude/obsidian-vault"
+printf '%s\n' "$h/OldXdgVault" > "$h/.config/claudesidion/vault"
+check_both 'the old XDG folder wins over ~/.claude' "$h/OldXdgVault" "$h"
+
+mkdir -p "$h/.config/dev-workbook"
+printf '%s\n' "$h/NewXdgVault" > "$h/.config/dev-workbook/vault"
+check_both 'the new XDG folder wins over the old one' "$h/NewXdgVault" "$h"
+
+check_both 'OBSIDIAN_VAULT wins over config files' "/old/env" "$h" OBSIDIAN_VAULT=/old/env
+check_both 'DEVWB_VAULT wins over OBSIDIAN_VAULT' "/new/env" "$h" OBSIDIAN_VAULT=/old/env DEVWB_VAULT=/new/env
+
+h="$TEST_TMP/h-pre3-root"; mkdir -p "$h/.config/claudesidion"
+# shellcheck disable=SC2088  # a literal ~ is what the config file holds
+printf '~/oldroot\n' > "$h/.config/claudesidion/code-root"
+assert_eq "$h/oldroot" "$(sh_root "$h")" 'shell: old XDG code-root is read'
+assert_eq "$h/oldroot" "$(py_root "$h")" 'python: old XDG code-root is read'
 
 # ---------------------------------------------------------------------------
 section 'Code root resolves the same way'
@@ -76,9 +98,9 @@ assert_eq "$h/code" "$(py_root "$h")" 'python: default code root'
 printf '~/src\n' > "$h/.claude/code-root"
 assert_eq "$h/src" "$(sh_root "$h")" 'shell: legacy code-root file'
 assert_eq "$h/src" "$(py_root "$h")" 'python: legacy code-root file'
-mkdir -p "$h/.config/claudesidion"
+mkdir -p "$h/.config/dev-workbook"
 # shellcheck disable=SC2088  # a literal ~ is what the config file holds
-printf '~/projects\n' > "$h/.config/claudesidion/code-root"
+printf '~/projects\n' > "$h/.config/dev-workbook/code-root"
 assert_eq "$h/projects" "$(sh_root "$h")" 'shell: XDG code-root wins'
 assert_eq "$h/projects" "$(py_root "$h")" 'python: XDG code-root wins'
 assert_eq "/env/root" "$(py_root "$h" CODE_ROOT=/env/root)" 'python: CODE_ROOT wins'
@@ -87,17 +109,17 @@ assert_eq "/env/root" "$(py_root "$h" CODE_ROOT=/env/root)" 'python: CODE_ROOT w
 section 'Hooks use the shared resolver'
 # ---------------------------------------------------------------------------
 
-h="$TEST_TMP/h-hook"; mkdir -p "$h/.config/claudesidion"
+h="$TEST_TMP/h-hook"; mkdir -p "$h/.config/dev-workbook"
 v="$(build_vault paths-hook)"
-printf '%s\n' "$v" > "$h/.config/claudesidion/vault"
+printf '%s\n' "$v" > "$h/.config/dev-workbook/vault"
 out="$(in_home "$h" -- bash "$HOOKS/vault-pull.sh" 2>&1)"
 assert_contains "$out" 'pulled to latest' 'vault-pull finds the vault from the XDG config file'
 
 # ---------------------------------------------------------------------------
-section 'The claudesidion command'
+section 'The dev-workbook command'
 # ---------------------------------------------------------------------------
 
-assert_contains "$(python3 "$CLI" --help)" 'claudesidion rename' '--help lists the commands'
+assert_contains "$(python3 "$CLI" --help)" 'dev-workbook rename' '--help lists the commands'
 python3 "$CLI" no-such-command >/dev/null 2>&1
 assert_eq 2 "$?" 'an unknown command exits 2'
 
@@ -110,7 +132,7 @@ printf -- '---\ntype: note\nstatus: reference\n---\n\n# Linker\n\nSee [[old-name
 
 assert_contains "$(python3 "$CLI" lint --vault "$v")" 'bad-name' 'lint --vault reports findings'
 assert_eq "$(python3 "$CLI" lint --vault "$v" --count)" \
-  "$(in_home "$TEST_TMP" OBSIDIAN_VAULT="$v" -- python3 "$CLI" lint --count)" \
+  "$(in_home "$TEST_TMP" DEVWB_VAULT="$v" -- python3 "$CLI" lint --count)" \
   'lint finds the vault without --vault'
 
 python3 "$CLI" rename --vault "$v" Projects/Alpha/Notes/old-name.md Projects/Alpha/Notes/OldName.md >/dev/null
@@ -122,16 +144,19 @@ assert_file_exists "$v/Projects/Alpha/TopicIndex.md" 'maintain regenerates index
 
 # Through a symlink on PATH, the way a standalone skill install reaches it.
 mkdir -p "$TEST_TMP/bin"
-ln -s "$CLI" "$TEST_TMP/bin/claudesidion"
+ln -s "$CLI" "$TEST_TMP/bin/dev-workbook"
 assert_eq "$(python3 "$CLI" lint --vault "$v" --count)" \
-  "$(PATH="$TEST_TMP/bin:$PATH" claudesidion lint --vault "$v" --count)" \
+  "$(PATH="$TEST_TMP/bin:$PATH" dev-workbook lint --vault "$v" --count)" \
   'works through a symlink on PATH'
+assert_eq "$(python3 "$CLI" lint --vault "$v" --count)" \
+  "$("$REPO_ROOT/bin/devwb" lint --vault "$v" --count)" \
+  'the devwb alias is the same command'
 
 # ---------------------------------------------------------------------------
-section 'claudesidion start / end: the session hooks for any harness'
+section 'dev-workbook start / end: the session hooks for any harness'
 # ---------------------------------------------------------------------------
 
-cs() { in_home "$TEST_TMP" OBSIDIAN_VAULT="$1" -- python3 "$CLI" "${@:2}"; }
+cs() { in_home "$TEST_TMP" DEVWB_VAULT="$1" -- python3 "$CLI" "${@:2}"; }
 
 v="$(build_vault cli-session)"
 printf 'left behind\n' >> "$v/Projects/Note.md"

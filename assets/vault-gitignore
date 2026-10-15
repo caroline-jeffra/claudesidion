@@ -1,4 +1,4 @@
-# Suggested .gitignore for a markdown vault (Obsidian, Foam, …) managed by claudesidion.
+# Suggested .gitignore for a markdown vault (Obsidian, Foam, …) managed by dev-workbook.
 # Copy to the root of your vault. The push hook also refuses secret-shaped filenames, but a
 # blocklist can never be complete — this is the durable half of that guard.
 

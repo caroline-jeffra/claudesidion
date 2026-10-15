@@ -77,7 +77,7 @@ def build(root: Path, versioned: bool = True) -> Path:
     return v
 
 
-tmp = Path(tempfile.mkdtemp(prefix="claudesidion-rn-tests."))
+tmp = Path(tempfile.mkdtemp(prefix="dev-workbook-rn-tests."))
 try:
     section("Every link form is rewritten")
     v = build(tmp / "a")

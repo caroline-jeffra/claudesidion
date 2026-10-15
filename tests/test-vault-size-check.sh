@@ -52,7 +52,7 @@ if make_big "$odd"; then
   err_file="$TEST_TMP/sizecheck.err"
   fake_home="$TEST_TMP/home.sizecheck"
   mkdir -p "$fake_home"
-  out="$(env HOME="$fake_home" OBSIDIAN_VAULT="$v" \
+  out="$(env HOME="$fake_home" DEVWB_VAULT="$v" \
     bash "$HOOKS/vault-size-check.sh" </dev/null 2>"$err_file")"
   rc=$?
   assert_eq 0 "$rc" '[T1.10] newline filename: exit 0'
@@ -75,7 +75,7 @@ probe() { # config-contents -> echoes hook stdout
   fake_home="$TEST_TMP/home.t28"
   rm -rf "$fake_home"; mkdir -p "$fake_home/.claude"
   printf '%s' "$1" > "$fake_home/.claude/obsidian-vault"
-  env -u OBSIDIAN_VAULT HOME="$fake_home" bash "$HOOKS/vault-size-check.sh" </dev/null 2>/dev/null
+  env -u DEVWB_VAULT HOME="$fake_home" bash "$HOOKS/vault-size-check.sh" </dev/null 2>/dev/null
 }
 
 v="$(build_vault t28 --no-git)"
@@ -104,11 +104,11 @@ if make_big "$v/Projects/huge.md"; then
     cp -R "$v" "$fake_home/Vault"
     # shellcheck disable=SC2088  # a literal ~ is the fixture: the hook under test expands it
     printf '~/Vault\n' > "$fake_home/.claude/obsidian-vault"
-    out="$(env -u OBSIDIAN_VAULT HOME="$fake_home" bash "$HOOKS/vault-size-check.sh" </dev/null 2>/dev/null)"
+    out="$(env -u DEVWB_VAULT HOME="$fake_home" bash "$HOOKS/vault-size-check.sh" </dev/null 2>/dev/null)"
     assert_contains "$out" 'huge.md' '[T2.8] ~ is expanded to $HOME'
 
     printf '$HOME/Vault\n' > "$fake_home/.claude/obsidian-vault"
-    out="$(env -u OBSIDIAN_VAULT HOME="$fake_home" bash "$HOOKS/vault-size-check.sh" </dev/null 2>/dev/null)"
+    out="$(env -u DEVWB_VAULT HOME="$fake_home" bash "$HOOKS/vault-size-check.sh" </dev/null 2>/dev/null)"
     assert_contains "$out" 'huge.md' '[T2.8] $HOME is expanded'
   fi
 else

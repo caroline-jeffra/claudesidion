@@ -49,7 +49,7 @@ The rule above still holds everywhere else in the vault, including `Notes/`, `Re
 - Lowercase, hyphenated, singular where natural: `machine-learning`, `api-design`, `book`.
 - Reuse before inventing. List what already exists before adding a tag:
   ```bash
-  grep -rhA20 "^tags:" "$OBSIDIAN_VAULT" --include="*.md" \
+  grep -rhA20 "^tags:" "$DEVWB_VAULT" --include="*.md" \
     | grep -oE "[a-z0-9-]+" | sort | uniq -c | sort -rn
   ```
 - 1–4 tags per note is plenty. Tags group notes across folders; they are not a filing cabinet.

@@ -7,7 +7,7 @@ constrained:
 
   * It NEVER deletes a file, moves a file, or edits a note's body.
   * It only rewrites index notes, the frontmatter of ordinary notes, and the one-line
-    `Projects/.claudesidion-version` record.
+    `Projects/.dev-workbook-version` record.
   * Every write is compare-before-write, so a no-op run touches nothing.
   * It fails open: any unexpected error exits 0 with a message on stderr, so a
     bug here can never break a session or block the vault push.
@@ -1184,7 +1184,8 @@ def lint(root: Path, cfg: Config, notes: list[Note], names: VaultNames, vault: P
 # Projects/ so the session commit syncs it to every machine, and a maintainer older than that
 # record does nothing. Versions that cannot be read disable the guard rather than the maintainer.
 
-VERSION_FILE = Path("Projects") / ".claudesidion-version"
+VERSION_FILE = Path("Projects") / ".dev-workbook-version"
+LEGACY_VERSION_FILE = Path("Projects") / ".claudesidion-version"   # read, never written
 
 
 def parse_version(text: str | None) -> tuple[int, int, int] | None:
@@ -1202,11 +1203,16 @@ def own_version() -> str | None:
 
 
 def recorded_version(vault: Path) -> str | None:
-    try:
-        text = (vault / VERSION_FILE).read_text(encoding="utf-8").strip()
-    except OSError:
-        return None
-    return text if parse_version(text) else None
+    """The newest version recorded under either the current or the pre-3.0 file name."""
+    found = []
+    for rel in (VERSION_FILE, LEGACY_VERSION_FILE):
+        try:
+            text = (vault / rel).read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+        if parse_version(text):
+            found.append(text)
+    return max(found, key=parse_version, default=None)
 
 
 def newer_recorded(vault: Path, mine: str | None) -> str | None:
@@ -1376,9 +1382,9 @@ def main(argv: list[str] | None = None) -> int:
         mine = own_version()
         newer = newer_recorded(vault, mine)
         if newer:
-            print(f"claudesidion {newer} has already updated this vault, but this session runs "
+            print(f"dev-workbook {newer} has already updated this vault, but this session runs "
                   f"{mine}; index maintenance is off until this plugin is updated "
-                  "(/plugin marketplace update claudesidion, then /reload-plugins).")
+                  "(/plugin marketplace update dev-workbook, then /reload-plugins).")
             return 0
         try:
             claim(vault, mine)

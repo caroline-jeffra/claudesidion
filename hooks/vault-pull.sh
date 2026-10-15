@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SessionStart hook: pull the Obsidian vault to latest once per session (startup|resume),
+# SessionStart hook: pull the vault to latest once per session (startup|resume),
 # so the whole session works from the latest remote state. Paired with vault-push.sh (SessionEnd),
 # which commits and pushes once at the end: the skills themselves never pull, commit, or push.
 #
@@ -8,7 +8,7 @@
 
 set -u
 
-# Vault resolution is shared by every hook: env var, the claudesidion config file, the legacy
+# Vault resolution is shared by every hook: env var, the dev-workbook config file, the legacy
 # ~/.claude file, then the default. See lib.sh.
 # shellcheck source=hooks/lib.sh
 . "$(dirname "$0")/lib.sh" 2>/dev/null || exit 0
@@ -16,7 +16,7 @@ VAULT="$(resolve_vault)"
 
 stranded=""
 
-# claim_version — record this plugin's version in the vault (Projects/.claudesidion-version) so
+# claim_version — record this plugin's version in the vault (Projects/.dev-workbook-version) so
 # that a session started before an upgrade, on this machine or another, finds a newer version
 # recorded when it exits and leaves the indexes alone. Prints a notice when this session is the
 # stale one. Needs Python; without it the guard is simply not armed.
@@ -46,15 +46,20 @@ fi
 # git to the hooks. Without a fresh one — a harness with no hooks — the skills sync themselves.
 # It lives inside .git, so it is never committed or synced to another machine.
 git_dir="$(git -C "$VAULT" rev-parse --absolute-git-dir 2>/dev/null)" \
-  && date +%Y-%m-%dT%H:%M:%S > "$git_dir/claudesidion-hooks" 2>/dev/null
+  && date +%Y-%m-%dT%H:%M:%S > "$git_dir/dev-workbook-hooks" 2>/dev/null
 
 # --- Relay what the last session's exit had to say -----------------------------
 # Session-end output reaches no one, so vault-push.sh records its warnings and they are reported
 # here, once. Control characters are stripped: the text ends up in the agent's context.
+# A session that ended under the pre-3.0 name wrote claudesidion-warnings; relay that too.
 relayed=""
-if wf="$(warnings_file "$VAULT")" && [ -s "$wf" ]; then
-  relayed="The last session's exit hook reported: $(tr '\n' ' ' < "$wf" | tr -d '\000-\037')"
-  rm -f "$wf"
+if wf="$(warnings_file "$VAULT")"; then
+  for f in "$wf" "${wf%/*}/claudesidion-warnings"; do
+    [ -s "$f" ] || continue
+    relayed="${relayed:+$relayed }$(tr '\n' ' ' < "$f" | tr -d '\000-\037')"
+    rm -f "$f"
+  done
+  [ -n "$relayed" ] && relayed="The last session's exit hook reported: $relayed"
 fi
 
 # --- Commit what a previous session left uncommitted ----------------------------
@@ -64,8 +69,8 @@ fi
 leftover=""
 if [ -n "$(git -C "$VAULT" status --porcelain -- Projects Resources Contributions Home.md TasksArchive.md WorkPlanning.md 2>/dev/null)" ]; then
   before="$(git -C "$VAULT" rev-parse HEAD 2>/dev/null)"
-  said="$(CLAUDESIDION_NO_RELAY=1 bash "$(dirname "$0")/vault-push.sh" </dev/null 2>/dev/null \
-    | sed 's/^claudesidion: //' | tr '\n' ' ' | tr -d '\000-\037')"
+  said="$(DEVWB_NO_RELAY=1 bash "$(dirname "$0")/vault-push.sh" </dev/null 2>/dev/null \
+    | sed 's/^dev-workbook: //' | tr '\n' ' ' | tr -d '\000-\037')"
   if [ "$(git -C "$VAULT" rev-parse HEAD 2>/dev/null)" != "$before" ]; then
     leftover="Committed vault changes that were not yet committed (left by an earlier session, or made outside one)."
   fi
