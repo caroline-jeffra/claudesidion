@@ -10,9 +10,9 @@
 set -u
 
 # Vault resolution is shared by every hook: env var, the claudesidion config file, the legacy
-# ~/.claude file, then the default. See lib-paths.sh.
-# shellcheck source=hooks/lib-paths.sh
-. "$(dirname "$0")/lib-paths.sh" 2>/dev/null || exit 0
+# ~/.claude file, then the default. See lib.sh.
+# shellcheck source=hooks/lib.sh
+. "$(dirname "$0")/lib.sh" 2>/dev/null || exit 0
 VAULT="$(resolve_vault)"
 
 command -v git >/dev/null 2>&1 || exit 0
@@ -26,8 +26,15 @@ git -C "$VAULT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 # user's in-progress work, so the hook declines and says why. Reporting is the whole point:
 # a silent decline is indistinguishable from a silent commit.
 
-# say <message> — one line to stdout, prefixed so it is attributable to this hook.
-say() { printf 'claudesidion: %s\n' "$1"; }
+# say <message> — one line to stdout, prefixed so it is attributable to this hook, and the same
+# line in the warnings relay: session-end output reaches no one, so the next start reports it.
+say() {
+  local w
+  printf 'claudesidion: %s\n' "$1"
+  [ -n "${CLAUDESIDION_NO_RELAY:-}" ] && return 0
+  w="$(warnings_file "$VAULT")" && printf '%s\n' "$1" >> "$w" 2>/dev/null
+  return 0
+}
 
 # An operation is in progress if git is holding any of these state files. Checked by
 # `rev-parse --git-path` so this is correct inside a linked worktree or a submodule, where
@@ -132,16 +139,25 @@ to_commit=()
 skipped_unowned=()
 skipped_secret=()
 
-# classify <path> — route one concrete file path into one of the three buckets.
+# Owned paths whose change is already fully staged (a blank worktree column, e.g. a `git rm`).
+# They need no `git add` — which fails outright on a staged deletion, since the path is in
+# neither the work tree nor the index — but they are still part of the commit.
+staged_only=()
+
+# classify <path> <worktree status> — route one concrete file path into one of the buckets.
 classify() {
-  local path="$1"
+  local path="$1" wt="${2:-}"
   [ -n "$path" ] || return 0
   if is_ignored_path "$path"; then
     return 0
   elif is_secret_path "$path"; then
     skipped_secret+=("$path")
   elif is_owned_path "$path"; then
-    to_commit+=("$path")
+    if [ "$wt" = " " ]; then
+      staged_only+=("$path")
+    else
+      to_commit+=("$path")
+    fi
   else
     skipped_unowned+=("$path")
   fi
@@ -158,7 +174,7 @@ while IFS= read -r -d '' entry; do
   case "$path" in
     *" -> "*) path="${path##* -> }" ;;
   esac
-  classify "$path"
+  classify "$path" "${entry:1:1}"
 done < <(git -C "$VAULT" -c core.quotepath=off status --porcelain -z --untracked-files=all 2>/dev/null)
 
 if [ "${#skipped_secret[@]}" -gt 0 ]; then
@@ -169,7 +185,7 @@ if [ "${#skipped_unowned[@]}" -gt 0 ]; then
   say "not committing ${#skipped_unowned[@]} path(s) outside the vault's known folders: ${skipped_unowned[*]}"
 fi
 
-if [ "${#to_commit[@]}" -eq 0 ]; then
+if [ "${#to_commit[@]}" -eq 0 ] && [ "${#staged_only[@]}" -eq 0 ]; then
   # Nothing the plugin owns changed. Still flush any unpushed commits from an earlier session.
   if [ -n "$(git -C "$VAULT" log '@{upstream}..HEAD' --oneline 2>/dev/null)" ]; then
     if ! retry_err="$(git -C "$VAULT" push 2>&1)"; then
@@ -189,7 +205,7 @@ fi
 
 date_stamp="$(date +%Y-%m-%d 2>/dev/null || echo session)"
 
-if ! add_err="$(git -C "$VAULT" add -- "${to_commit[@]}" 2>&1)"; then
+if [ "${#to_commit[@]}" -gt 0 ] && ! add_err="$(git -C "$VAULT" add -- "${to_commit[@]}" 2>&1)"; then
   say "could not stage vault changes: ${add_err%%$'\n'*}"
   exit 0
 fi
@@ -197,7 +213,7 @@ fi
 if ! commit_err="$(git -C "$VAULT" commit -m "vault: session updates ${date_stamp}" 2>&1)"; then
   # Leaving the index staged is itself a change the user did not ask for: their next manual
   # `git commit` would sweep up whatever this hook staged. Unwind to the state we found.
-  git -C "$VAULT" reset -q -- "${to_commit[@]}" >/dev/null 2>&1 || true
+  [ "${#to_commit[@]}" -eq 0 ] || git -C "$VAULT" reset -q -- "${to_commit[@]}" >/dev/null 2>&1 || true
 
   case "$commit_err" in
     *"Author identity unknown"*|*"tell me who you are"*|*"empty ident"*)

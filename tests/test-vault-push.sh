@@ -47,6 +47,30 @@ assert_eq 0 "$HOOK_RC" 'normal write: exit 0'
 assert_contains "$(tracked "$v")" 'Projects/added.md' 'normal write: file committed'
 assert_eq "" "$(gitq "$v" status --porcelain)" 'normal write: tree left clean'
 
+# A note the user deleted with `git rm` is already staged and gone from the work tree. `git add`
+# on it fails outright, which used to abort the whole commit and leave every change uncommitted.
+v="$(build_vault push-staged-delete)"
+printf '# old\n' > "$v/Projects/Old Index.md"
+gitq "$v" add -A && gitq "$v" commit -qm 'add old' && gitq "$v" push -q
+gitq "$v" rm -q "Projects/Old Index.md"
+printf '# also edited\n' >> "$v/Projects/Note.md"
+run_hook vault-push.sh "$v"
+assert_not_contains "$(tracked "$v")" 'Old Index.md' 'staged deletion: committed'
+assert_eq "" "$(gitq "$v" status --porcelain)" 'staged deletion: other edits committed with it'
+assert_not_contains "$HOOK_OUT" 'could not stage' 'staged deletion: no staging error'
+
+v="$(build_vault push-staged-only)"
+gitq "$v" rm -q "Projects/Note.md"
+run_hook vault-push.sh "$v"
+assert_eq "" "$(gitq "$v" status --porcelain)" 'only a staged deletion: still committed'
+
+# Session-end output reaches no one, so what the hook reports is also recorded for the next start.
+v="$(build_vault push-relay)"
+printf 'x\n' > "$v/stray.txt"
+run_hook vault-push.sh "$v"
+assert_contains "$(cat "$v/.git/claudesidion-warnings" 2>/dev/null)" 'stray.txt' \
+  'a reported problem is recorded for the next session start'
+
 v="$(build_vault push-version)"
 printf '2.3.0\n' > "$v/Projects/.claudesidion-version"
 run_hook vault-push.sh "$v"

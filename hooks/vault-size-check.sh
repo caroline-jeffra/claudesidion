@@ -9,15 +9,15 @@
 set -u
 
 # Vault resolution is shared by every hook: env var, the claudesidion config file, the legacy
-# ~/.claude file, then the default. See lib-paths.sh.
-# shellcheck source=hooks/lib-paths.sh
-. "$(dirname "$0")/lib-paths.sh" 2>/dev/null || exit 0
+# ~/.claude file, then the default. See lib.sh.
+# shellcheck source=hooks/lib.sh
+. "$(dirname "$0")/lib.sh" 2>/dev/null || exit 0
 VAULT="$(resolve_vault)"
 [ -d "$VAULT" ] || exit 0
 
-# This hook's only output is JSON built by jq. Check for it before doing any work — a
-# scan of the whole vault whose result cannot be reported is pure latency at session start.
-command -v jq >/dev/null 2>&1 || exit 0
+# This hook's only output is the context it emits. Check it can be emitted before doing any
+# work — a scan of the whole vault whose result cannot be reported is pure latency at session start.
+can_emit || exit 0
 
 # 47.5 MB in bytes (95% of GitHub's 50 MB per-file push warning).
 THRESHOLD=49807360
@@ -46,8 +46,6 @@ ctx="Vault size warning: the following files are within 5% of GitHub's 50 MB per
 
 Surface this to the user and offer to fix each file: for markdown, split it at a natural boundary (per year/month or per topic) and update wikilinks; if it is bloated by embedded base64 images or pasted data dumps, extract those into attachment files; for genuinely binary files, suggest Git LFS. Do not modify any file without the user's confirmation."
 
-jq -n --arg ctx "$ctx" \
-  '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $ctx}}' \
-  2>/dev/null || true
+emit_context "$ctx"
 
 exit 0

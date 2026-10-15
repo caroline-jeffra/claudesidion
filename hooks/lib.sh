@@ -1,5 +1,6 @@
 # shellcheck shell=bash
-# Shared path resolution for every claudesidion hook. Source it; it defines functions only.
+# Shared helpers for every claudesidion hook: path resolution, output formats, and the warnings
+# relay. Source it; it defines functions only.
 # hooks/claudesidion_paths.py is the Python twin — keep the two in step (tests check they agree).
 #
 # Each path resolves in the same order:
@@ -46,3 +47,39 @@ resolve_path() {
 
 resolve_vault() { resolve_path "${OBSIDIAN_VAULT:-}" vault obsidian-vault "$HOME/ObsidianVault"; }
 resolve_code_root() { resolve_path "${CODE_ROOT:-}" code-root code-root "$HOME/code"; }
+
+# ---------------------------------------------------------------- output
+
+# emit_context <text> — session-start context for the agent, in the harness's format, chosen by
+# CLAUDESIDION_FORMAT: `claude` (default) prints Claude Code's hookSpecificOutput JSON, `cursor`
+# prints {"additional_context": ...}, `plain` prints the text. JSON needs jq; without it the
+# hook stays silent rather than erroring.
+emit_context() {
+  case "${CLAUDESIDION_FORMAT:-claude}" in
+    plain)
+      printf '%s\n' "$1" ;;
+    cursor)
+      command -v jq >/dev/null 2>&1 \
+        && jq -n --arg ctx "$1" '{additional_context: $ctx}' 2>/dev/null ;;
+    *)
+      command -v jq >/dev/null 2>&1 \
+        && jq -n --arg ctx "$1" \
+          '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $ctx}}' 2>/dev/null ;;
+  esac
+  return 0
+}
+
+# can_emit — true when emit_context can produce output, so a hook can skip work it could not report.
+can_emit() { [ "${CLAUDESIDION_FORMAT:-claude}" = plain ] || command -v jq >/dev/null 2>&1; }
+
+# ---------------------------------------------------------------- warnings relay
+
+# Session-end output is shown to no one, so a hook that has something to say at exit also
+# records it here, inside the vault's .git (never committed), and the next session start
+# reports it. warnings_file <vault> prints the path, or fails for a vault that is not a repo.
+warnings_file() {
+  local dir
+  dir="$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null)" || return 1
+  [ -n "$dir" ] || return 1
+  printf '%s/claudesidion-warnings\n' "$dir"
+}
