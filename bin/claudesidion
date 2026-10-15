@@ -10,6 +10,14 @@
                                                  rename a note and rewrite every link to it
     claudesidion qualify [--vault P] [--dry-run] qualify ambiguous wikilinks
     claudesidion hours [session_hours options]   measure time spent from session transcripts
+    claudesidion start [--format F]              session start: commit leftovers, pull, checks
+    claudesidion end                             session end: maintain indexes, commit, push
+
+`start` and `end` are the session hooks, for harnesses that do not run Claude Code's
+hooks/hooks.json. `start` prints the session context once, in the harness's format:
+`--format claude` (hookSpecificOutput JSON, the default), `cursor` ({"additional_context": ...})
+or `plain` (text). `end` prints anything worth reporting as plain text; the next `start` relays
+it too, since few harnesses show session-end output.
 
 The vault resolves as the hooks do: --vault, $OBSIDIAN_VAULT, ~/.config/claudesidion/vault,
 ~/.claude/obsidian-vault, then ~/ObsidianVault.
@@ -50,6 +58,60 @@ def run_maintainer(args: list[str], *flags: str) -> int:
     return vault_maintain.main([*flags, *rest, vault])
 
 
+START_HOOKS = ("vault-pull.sh", "vault-size-check.sh", "vault-condense-reminder.sh")
+END_HOOKS = ("vault-maintain.sh", "vault-push.sh")
+FORMATS = ("claude", "cursor", "plain")
+
+
+def run_hooks(names: tuple[str, ...], fmt: str = "plain") -> list[str]:
+    """Run hook scripts in order and return what each printed, skipping silent ones."""
+    import os
+    import subprocess
+
+    env = {**os.environ, "CLAUDESIDION_FORMAT": fmt, "CLAUDE_PLUGIN_ROOT": str(ROOT)}
+    out = []
+    for name in names:
+        try:
+            r = subprocess.run(["bash", str(ROOT / "hooks" / name)], env=env, stdin=subprocess.DEVNULL,
+                               capture_output=True, text=True, timeout=120)
+        except (OSError, subprocess.TimeoutExpired):
+            continue                       # fail open, like the hooks themselves
+        if r.stdout.strip():
+            out.append(r.stdout.strip())
+    return out
+
+
+def session_start(args: list[str]) -> int:
+    import json
+
+    fmt = "claude"
+    for i, a in enumerate(args):
+        if a.startswith("--format="):
+            fmt = a.split("=", 1)[1]
+        elif a == "--format" and i + 1 < len(args):
+            fmt = args[i + 1]
+    if fmt not in FORMATS:
+        print(f"claudesidion: unknown format '{fmt}' (one of {', '.join(FORMATS)})", file=sys.stderr)
+        return 2
+    ctx = "\n\n".join(run_hooks(START_HOOKS))
+    if not ctx:
+        return 0
+    if fmt == "plain":
+        print(ctx)
+    elif fmt == "cursor":
+        print(json.dumps({"additional_context": ctx}))
+    else:
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart",
+                                                 "additionalContext": ctx}}))
+    return 0
+
+
+def session_end(args: list[str]) -> int:
+    for text in run_hooks(END_HOOKS):
+        print(text)
+    return 0
+
+
 def main(argv: list[str]) -> int:
     if not argv or argv[0] in ("-h", "--help", "help"):
         print(__doc__.strip())
@@ -74,6 +136,10 @@ def main(argv: list[str]) -> int:
     if cmd == "qualify":
         import qualify_links
         return qualify_links.main(args)
+    if cmd == "start":
+        return session_start(args)
+    if cmd == "end":
+        return session_end(args)
     if cmd == "hours":
         import session_hours
         return session_hours.main(args)

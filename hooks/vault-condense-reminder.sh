@@ -9,12 +9,12 @@
 set -u
 
 # Vault resolution is shared by every hook: env var, the claudesidion config file, the legacy
-# ~/.claude file, then the default. See lib-paths.sh.
-# shellcheck source=hooks/lib-paths.sh
-. "$(dirname "$0")/lib-paths.sh" 2>/dev/null || exit 0
+# ~/.claude file, then the default. See lib.sh.
+# shellcheck source=hooks/lib.sh
+. "$(dirname "$0")/lib.sh" 2>/dev/null || exit 0
 VAULT="$(resolve_vault)"
 [ -d "$VAULT" ] || exit 0
-command -v jq >/dev/null 2>&1 || exit 0
+can_emit || exit 0
 
 STAMP="$VAULT/.condense-last-run"
 cutoff="$(date -v-7d +%Y-%m-%d 2>/dev/null || date -d '-7 days' +%Y-%m-%d 2>/dev/null)" || exit 0
@@ -92,8 +92,6 @@ if [ -n "$routine" ] && [ -n "$stale_cutoff" ]; then
   [ -n "$found" ] || exit 0
 fi
 
-jq -n --arg ctx "$ctx" \
-  '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $ctx}}' \
-  2>/dev/null || true
+emit_context "$ctx"
 
 exit 0

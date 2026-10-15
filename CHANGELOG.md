@@ -14,6 +14,25 @@ are minor.
 
 ## [Unreleased]
 
+## [2.6.0] — 2026-10-15
+
+Portability step 4: one session entry point any harness can call.
+
+### Added
+
+- **`claudesidion start` and `claudesidion end`** run the session hooks for harnesses other than Claude Code. `start` prints the combined session context once, in the harness's format: `--format claude` (the default), `cursor` (`{"additional_context": ...}`) or `plain`. Every start hook now emits through one shared function, which also honours `CLAUDESIDION_FORMAT`.
+- **Session start commits leftovers.** Changes in the plugin's folders that no session end committed — a harness without one, or a cancelled exit — are committed and pushed at the next session start, before the pull, under the same owned-paths rules as the exit hook.
+- **Exit warnings reach the next session.** What the push hook reports at session end (a rejected push, skipped secret-shaped files, paths outside the known folders) was shown to no one. It is now recorded in the vault's `.git` and relayed once by the next session start.
+
+### Fixed
+
+- **A note deleted with `git rm` no longer blocks the session commit.** The push hook ran `git add` on every owned change, which fails outright on an already-staged deletion, and the failure aborted the whole commit — leaving every other change from the session uncommitted. Already-staged changes are now committed without being re-added.
+
+### Changed
+
+- The size check and condense reminder no longer need `jq` when the output format is `plain`.
+- `hooks/lib-paths.sh` is now `hooks/lib.sh`, holding the output and warnings helpers alongside path resolution.
+
 ## [2.5.0] — 2026-10-15
 
 Portability step 3: skills work when installed on their own, outside the plugin folder.

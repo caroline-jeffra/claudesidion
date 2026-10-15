@@ -72,6 +72,38 @@ assert_eq "$mine" "$(cat "$v/Projects/.claudesidion-version" 2>/dev/null)" 'loca
 assert_empty "$HOOK_OUT" 'local vault: still silent'
 
 # ---------------------------------------------------------------------------
+section 'Recovery at session start: relay exit warnings, commit leftovers'
+# ---------------------------------------------------------------------------
+
+v="$(build_vault pull-relay)"
+printf 'push was rejected\n' > "$v/.git/claudesidion-warnings"
+run_hook vault-pull.sh "$v"
+assert_contains "$HOOK_OUT" 'push was rejected' 'the last exit warning is relayed'
+assert_file_absent "$v/.git/claudesidion-warnings" 'and relayed only once'
+
+v="$(build_vault pull-leftover)"
+printf 'left behind\n' >> "$v/Projects/Note.md"
+run_hook vault-pull.sh "$v"
+assert_contains "$HOOK_OUT" 'not yet committed' 'leftover changes are reported'
+assert_eq "" "$(gitq "$v" status --porcelain -- Projects/Note.md)" 'leftover changes are committed'
+assert_eq 0 "$(unpushed_ct "$v")" 'and pushed'
+assert_file_absent "$v/.git/claudesidion-warnings" 'start-time commit messages are not relayed again'
+
+v="$(build_vault pull-leftover-unowned)"
+printf 'x\n' > "$v/stray.txt"
+run_hook vault-pull.sh "$v"
+assert_not_contains "$HOOK_OUT" 'not yet committed' 'a change outside the owned folders triggers nothing'
+
+for fmt in plain cursor; do
+  v="$(build_vault "pull-format-$fmt")"
+  out="$(env HOME="$TEST_TMP/home.$$" OBSIDIAN_VAULT="$v" CLAUDESIDION_FORMAT="$fmt" bash "$HOOKS/vault-pull.sh" 2>&1)"
+  case "$fmt" in
+    plain)  assert_contains "$out" 'Vault pulled to latest' 'plain format prints text' ;;
+    cursor) assert_contains "$out" '"additional_context"' 'cursor format prints additional_context' ;;
+  esac
+done
+
+# ---------------------------------------------------------------------------
 section 'Flushing commits stranded by a cancelled SessionEnd push'
 # ---------------------------------------------------------------------------
 

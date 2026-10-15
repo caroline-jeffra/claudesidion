@@ -15,9 +15,9 @@
 set -u
 
 # Vault resolution is shared by every hook: env var, the claudesidion config file, the legacy
-# ~/.claude file, then the default. See lib-paths.sh.
-# shellcheck source=hooks/lib-paths.sh
-. "$(dirname "$0")/lib-paths.sh" 2>/dev/null || exit 0
+# ~/.claude file, then the default. See lib.sh.
+# shellcheck source=hooks/lib.sh
+. "$(dirname "$0")/lib.sh" 2>/dev/null || exit 0
 VAULT="$(resolve_vault)"
 [ -d "$VAULT" ] || exit 0
 

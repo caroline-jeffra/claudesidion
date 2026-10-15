@@ -94,6 +94,17 @@ find them. `claudesidion --help` lists its commands.
 > session, and indexes refresh only then too. Use the marketplace install unless you specifically
 > want skills-only.
 
+### Other coding agents
+
+The skills are plain Agent Skills and work in any harness that reads them. The session hooks are Claude Code's `hooks/hooks.json`; any other harness gets the same behaviour from two commands, once `claudesidion` is on your PATH (see the symlink install above):
+
+| Command | Run it at | What it does |
+| --- | --- | --- |
+| `claudesidion start --format <claude\|cursor\|plain>` | session start | Relays what the last session's exit reported, commits changes an earlier session left uncommitted, flushes stranded commits, pulls, then runs the size check and the condense reminder. Prints the session context once, in the harness's format. |
+| `claudesidion end` | session end, if the harness has one | Refreshes indexes, commits the plugin's folders, pushes. |
+
+A harness with no session-end event still works: the next `start` commits what the last session left. Whatever `end` reports is also relayed by the next `start`, since few harnesses show session-end output.
+
 ### Getting updates
 
 Claude Code does **not** auto-pull marketplace plugins — the marketplace is cached as a git clone and

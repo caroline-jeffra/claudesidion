@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for the shared path resolvers (hooks/lib-paths.sh and its Python twin,
+# Tests for the shared path resolvers (hooks/lib.sh and its Python twin,
 # hooks/claudesidion_paths.py) and for the bin/claudesidion command that skills call.
 
 . "$(dirname "$0")/lib.sh"
@@ -20,8 +20,8 @@ in_home() {
   env -u OBSIDIAN_VAULT -u CODE_ROOT -u XDG_CONFIG_HOME HOME="$home" ${assigns[@]+"${assigns[@]}"} "$@"
 }
 
-sh_vault() { in_home "$1" "${@:2}" -- bash -c ". '$HOOKS/lib-paths.sh'; resolve_vault"; }
-sh_root()  { in_home "$1" "${@:2}" -- bash -c ". '$HOOKS/lib-paths.sh'; resolve_code_root"; }
+sh_vault() { in_home "$1" "${@:2}" -- bash -c ". '$HOOKS/lib.sh'; resolve_vault"; }
+sh_root()  { in_home "$1" "${@:2}" -- bash -c ". '$HOOKS/lib.sh'; resolve_code_root"; }
 py_vault() { in_home "$1" "${@:2}" -- python3 "$CLI" vault-path; }
 py_root()  { in_home "$1" "${@:2}" -- python3 "$CLI" code-root; }
 
@@ -126,5 +126,32 @@ ln -s "$CLI" "$TEST_TMP/bin/claudesidion"
 assert_eq "$(python3 "$CLI" lint --vault "$v" --count)" \
   "$(PATH="$TEST_TMP/bin:$PATH" claudesidion lint --vault "$v" --count)" \
   'works through a symlink on PATH'
+
+# ---------------------------------------------------------------------------
+section 'claudesidion start / end: the session hooks for any harness'
+# ---------------------------------------------------------------------------
+
+cs() { in_home "$TEST_TMP" OBSIDIAN_VAULT="$1" -- python3 "$CLI" "${@:2}"; }
+
+v="$(build_vault cli-session)"
+printf 'left behind\n' >> "$v/Projects/Note.md"
+out="$(cs "$v" start --format plain)"
+assert_contains "$out" 'not yet committed' 'start commits what an earlier session left'
+assert_contains "$out" 'Vault pulled to latest' 'start pulls'
+assert_eq "" "$(gitq "$v" status --porcelain -- Projects/Note.md)" 'start leaves the leftovers committed'
+
+out="$(cs "$v" start)"
+assert_eq 1 "$(printf '%s' "$out" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(int("additionalContext" in d["hookSpecificOutput"]))' 2>/dev/null)" \
+  'start defaults to one Claude Code JSON object'
+out="$(cs "$v" start --format=cursor)"
+assert_eq 1 "$(printf '%s' "$out" | python3 -c 'import json,sys; print(int("additional_context" in json.load(sys.stdin)))' 2>/dev/null)" \
+  'start --format=cursor prints one additional_context object'
+cs "$v" start --format bogus >/dev/null 2>&1
+assert_eq 2 "$?" 'an unknown format exits 2'
+
+printf 'written this session\n' >> "$v/Projects/Note.md"
+cs "$v" end >/dev/null
+assert_eq "" "$(gitq "$v" status --porcelain -- Projects)" 'end commits the session'
+assert_eq 0 "$(git -C "$v" rev-list --count '@{upstream}..HEAD')" 'end pushes'
 
 finish

@@ -1,4 +1,4 @@
-"""Shared path resolution for claudesidion's Python tools — the twin of hooks/lib-paths.sh.
+"""Shared path resolution for claudesidion's Python tools — the twin of hooks/lib.sh.
 
 Each path resolves in the same order as the hooks:
 
@@ -8,7 +8,7 @@ Each path resolves in the same order as the hooks:
   4. a default                                            (~/ObsidianVault / ~/code)
 
 A config file is one line; surrounding whitespace is trimmed and a leading `~` or `$HOME` is
-expanded. Keep this and lib-paths.sh in step: the tests check they agree.
+expanded. Keep this and lib.sh in step: the tests check they agree.
 """
 
 from __future__ import annotations

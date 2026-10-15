@@ -9,9 +9,9 @@
 set -u
 
 # Vault resolution is shared by every hook: env var, the claudesidion config file, the legacy
-# ~/.claude file, then the default. See lib-paths.sh.
-# shellcheck source=hooks/lib-paths.sh
-. "$(dirname "$0")/lib-paths.sh" 2>/dev/null || exit 0
+# ~/.claude file, then the default. See lib.sh.
+# shellcheck source=hooks/lib.sh
+. "$(dirname "$0")/lib.sh" 2>/dev/null || exit 0
 VAULT="$(resolve_vault)"
 
 stranded=""
@@ -48,13 +48,30 @@ fi
 git_dir="$(git -C "$VAULT" rev-parse --absolute-git-dir 2>/dev/null)" \
   && date +%Y-%m-%dT%H:%M:%S > "$git_dir/claudesidion-hooks" 2>/dev/null
 
-emit_context() {
-  # Emit additionalContext if jq is available; otherwise stay silent (never error).
-  command -v jq >/dev/null 2>&1 || return 0
-  jq -n --arg ctx "$1" \
-    '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $ctx}}' \
-    2>/dev/null || true
-}
+# --- Relay what the last session's exit had to say -----------------------------
+# Session-end output reaches no one, so vault-push.sh records its warnings and they are reported
+# here, once. Control characters are stripped: the text ends up in the agent's context.
+relayed=""
+if wf="$(warnings_file "$VAULT")" && [ -s "$wf" ]; then
+  relayed="The last session's exit hook reported: $(tr '\n' ' ' < "$wf" | tr -d '\000-\037')"
+  rm -f "$wf"
+fi
+
+# --- Commit what a previous session left uncommitted ----------------------------
+# A harness with no session-end event (or a cancelled one) leaves the session's writes
+# uncommitted. Commit them now, before pulling, through the same owned-paths-only rules as the
+# exit hook. Its messages are reported directly rather than relayed to the next session.
+leftover=""
+if [ -n "$(git -C "$VAULT" status --porcelain -- Projects Resources Contributions Home.md TasksArchive.md WorkPlanning.md 2>/dev/null)" ]; then
+  before="$(git -C "$VAULT" rev-parse HEAD 2>/dev/null)"
+  said="$(CLAUDESIDION_NO_RELAY=1 bash "$(dirname "$0")/vault-push.sh" </dev/null 2>/dev/null \
+    | sed 's/^claudesidion: //' | tr '\n' ' ' | tr -d '\000-\037')"
+  if [ "$(git -C "$VAULT" rev-parse HEAD 2>/dev/null)" != "$before" ]; then
+    leftover="Committed vault changes that were not yet committed (left by an earlier session, or made outside one)."
+  fi
+  leftover="${leftover}${said:+ ${said% }}"
+  leftover="${leftover# }"
+fi
 
 # --- Flush stranded commits ---------------------------------------------------
 # The SessionEnd push hook commits locally, then pushes over the network. Session teardown can
@@ -74,13 +91,13 @@ fi
 
 if git -C "$VAULT" pull --ff-only >/dev/null 2>&1; then
   short="$(git -C "$VAULT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
-  status="Obsidian vault pulled to latest (${short})."
+  status="Vault pulled to latest (${short})."
 else
-  status="Obsidian vault pull failed (offline, no remote, or non-fast-forward); working from local state."
+  status="Vault pull failed (offline, no remote, or non-fast-forward); working from local state."
 fi
 
 # After the pull, so the comparison is against the version other machines recorded.
 stale="$(claim_version)"
-emit_context "${stranded:+$stranded }${status}${stale:+ $stale}"
+emit_context "${relayed:+$relayed }${leftover:+$leftover }${stranded:+$stranded }${status}${stale:+ $stale}"
 
 exit 0
