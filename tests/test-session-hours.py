@@ -59,7 +59,7 @@ def run(args: list[str]) -> str:
     return buf.getvalue()
 
 
-tmp = Path(tempfile.mkdtemp(prefix="claudesidion-sh-tests."))
+tmp = Path(tempfile.mkdtemp(prefix="dev-workbook-sh-tests."))
 try:
     t = tmp / "transcripts"
     day = "2026-10-05"   # a Monday

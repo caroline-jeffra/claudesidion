@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""claudesidion — one command for every tool the skills and hooks run.
+"""dev-workbook — one command for every tool the skills and hooks run.
 
-    claudesidion vault-path                      print the resolved vault path
-    claudesidion code-root                       print the resolved code root
-    claudesidion lint [--count] [--vault P]      report notes that break the format contract
-    claudesidion maintain [--vault P]            refresh derived frontmatter and indexes
-    claudesidion claim [--vault P]               record this plugin's version in the vault
-    claudesidion rename [--vault P] [--dry-run] OLD NEW
+    dev-workbook vault-path                      print the resolved vault path
+    dev-workbook code-root                       print the resolved code root
+    dev-workbook lint [--count] [--vault P]      report notes that break the format contract
+    dev-workbook maintain [--vault P]            refresh derived frontmatter and indexes
+    dev-workbook claim [--vault P]               record this plugin's version in the vault
+    dev-workbook rename [--vault P] [--dry-run] OLD NEW
                                                  rename a note and rewrite every link to it
-    claudesidion qualify [--vault P] [--dry-run] qualify ambiguous wikilinks
-    claudesidion hours [session_hours options]   measure time spent from session transcripts
-    claudesidion start [--format F]              session start: commit leftovers, pull, checks
-    claudesidion end                             session end: maintain indexes, commit, push
+    dev-workbook qualify [--vault P] [--dry-run] qualify ambiguous wikilinks
+    dev-workbook hours [session_hours options]   measure time spent from session transcripts
+    dev-workbook start [--format F]              session start: commit leftovers, pull, checks
+    dev-workbook end                             session end: maintain indexes, commit, push
 
 `start` and `end` are the session hooks, for harnesses that do not run Claude Code's
 hooks/hooks.json. `start` prints the session context once, in the harness's format:
@@ -19,11 +19,11 @@ hooks/hooks.json. `start` prints the session context once, in the harness's form
 or `plain` (text). `end` prints anything worth reporting as plain text; the next `start` relays
 it too, since few harnesses show session-end output.
 
-The vault resolves as the hooks do: --vault, $OBSIDIAN_VAULT, ~/.config/claudesidion/vault,
+The vault resolves as the hooks do: --vault, $DEVWB_VAULT, ~/.config/dev-workbook/vault,
 ~/.claude/obsidian-vault, then ~/ObsidianVault.
 
 A skill installed on its own has no plugin folder to find scripts in, so it calls this command
-instead; put it on PATH with `ln -s <plugin root>/bin/claudesidion ~/.local/bin/`. It locates the
+instead; put it on PATH with `ln -s <plugin root>/bin/dev-workbook ~/.local/bin/`. It locates the
 rest of the plugin through that symlink.
 """
 
@@ -35,7 +35,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(ROOT / "hooks"), str(ROOT / "scripts")]
 
-import claudesidion_paths as paths  # noqa: E402
+import dev_workbook_paths as paths  # noqa: E402
 
 
 def take_vault(args: list[str]) -> tuple[str, list[str]]:
@@ -68,7 +68,7 @@ def run_hooks(names: tuple[str, ...], fmt: str = "plain") -> list[str]:
     import os
     import subprocess
 
-    env = {**os.environ, "CLAUDESIDION_FORMAT": fmt, "CLAUDE_PLUGIN_ROOT": str(ROOT)}
+    env = {**os.environ, "DEVWB_FORMAT": fmt, "CLAUDE_PLUGIN_ROOT": str(ROOT)}
     out = []
     for name in names:
         try:
@@ -91,7 +91,7 @@ def session_start(args: list[str]) -> int:
         elif a == "--format" and i + 1 < len(args):
             fmt = args[i + 1]
     if fmt not in FORMATS:
-        print(f"claudesidion: unknown format '{fmt}' (one of {', '.join(FORMATS)})", file=sys.stderr)
+        print(f"dev-workbook: unknown format '{fmt}' (one of {', '.join(FORMATS)})", file=sys.stderr)
         return 2
     ctx = "\n\n".join(run_hooks(START_HOOKS))
     if not ctx:
@@ -144,7 +144,7 @@ def main(argv: list[str]) -> int:
         import session_hours
         return session_hours.main(args)
 
-    print(f"claudesidion: unknown command '{cmd}' (see claudesidion --help)", file=sys.stderr)
+    print(f"dev-workbook: unknown command '{cmd}' (see dev-workbook --help)", file=sys.stderr)
     return 2
 
 

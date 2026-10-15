@@ -33,9 +33,9 @@ The vault syncs between machines, and an absolute path is only ever correct on o
 row's path is recorded **relative to that machine's code root**.
 
 **Resolving the code root**, in order: the `CODE_ROOT` environment variable, then
-`${XDG_CONFIG_HOME:-~/.config}/claudesidion/code-root`, then the legacy `~/.claude/code-root` (one
+`${XDG_CONFIG_HOME:-~/.config}/dev-workbook/code-root` (or the pre-3.0 `…/claudesidion/code-root`), then the legacy `~/.claude/code-root` (one
 line each, the root's path — whitespace trimmed, a leading `~/` or `$HOME/` expanded), then the
-default `~/code`; `claudesidion code-root` prints the result. This is deliberately the same shape as
+default `~/code`; `dev-workbook code-root` prints the result. This is deliberately the same shape as
 the vault path, for the same reason: profile exports do not reach hook shells.
 
 - **A relative row** (`some-repo`, `nested/some-repo`) resolves against the root. This is the normal
@@ -395,7 +395,7 @@ the vocabulary: `topics`, `min_hits`, `title_weight`, and optionally `root_notes
 
 ## `TasksArchive.md` (vault root — create once per vault)
 
-Lives at `$OBSIDIAN_VAULT/TasksArchive.md`, not inside a workspace. Seed it with the frontmatter and
+Lives at `$DEVWB_VAULT/TasksArchive.md`, not inside a workspace. Seed it with the frontmatter and
 intro only; months and rows get appended as work happens.
 
 ```markdown

@@ -8,7 +8,7 @@
 
 set -u
 
-# Vault resolution is shared by every hook: env var, the claudesidion config file, the legacy
+# Vault resolution is shared by every hook: env var, the dev-workbook config file, the legacy
 # ~/.claude file, then the default. See lib.sh.
 # shellcheck source=hooks/lib.sh
 . "$(dirname "$0")/lib.sh" 2>/dev/null || exit 0

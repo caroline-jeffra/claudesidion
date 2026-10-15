@@ -1,7 +1,7 @@
 {
-  "name": "claudesidion",
-  "version": "2.6.0",
-  "description": "Obsidian-vault integration skills for Claude Code: capture notes, manage per-repo workspaces, ingest project docs, and summarize contributions.",
+  "name": "dev-workbook",
+  "version": "3.0.0",
+  "description": "Working memory for coding agents in a plain markdown vault: per-repo workspaces, notes, imported project docs and contribution summaries, kept in sync by session hooks.",
   "author": {
     "name": "caroline-jeffra"
   }

@@ -14,11 +14,11 @@ Everything else is linked, never written here: the plan and estimates live in th
 
 ## Measuring
 
-**Source: Claude Code session transcripts**, measured by `claudesidion hours` (or `python3 "<plugin root>/bin/claudesidion" hours` when the command is not on PATH):
+**Source: Claude Code session transcripts**, measured by `dev-workbook hours` (or `python3 "<plugin root>/bin/dev-workbook" hours` when the command is not on PATH):
 
 ```bash
-claudesidion hours --repo <repo path> --since <tracked_through + 1 day> --by sitting
-claudesidion hours --repo <repo path> --since <first day of the week> --by week
+dev-workbook hours --repo <repo path> --since <tracked_through + 1 day> --by sitting
+dev-workbook hours --repo <repo path> --since <first day of the week> --by week
 ```
 
 | Rule | Why |

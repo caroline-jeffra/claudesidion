@@ -68,13 +68,13 @@ assert_eq "" "$(gitq "$v" status --porcelain)" 'only a staged deletion: still co
 v="$(build_vault push-relay)"
 printf 'x\n' > "$v/stray.txt"
 run_hook vault-push.sh "$v"
-assert_contains "$(cat "$v/.git/claudesidion-warnings" 2>/dev/null)" 'stray.txt' \
+assert_contains "$(cat "$v/.git/dev-workbook-warnings" 2>/dev/null)" 'stray.txt' \
   'a reported problem is recorded for the next session start'
 
 v="$(build_vault push-version)"
-printf '2.3.0\n' > "$v/Projects/.claudesidion-version"
+printf '2.3.0\n' > "$v/Projects/.dev-workbook-version"
 run_hook vault-push.sh "$v"
-assert_contains "$(tracked "$v")" 'Projects/.claudesidion-version' \
+assert_contains "$(tracked "$v")" 'Projects/.dev-workbook-version' \
   'the plugin version record is committed, so other machines see it'
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # Contribution summary — structure and section guidance
 
-One file per project at `$OBSIDIAN_VAULT/Contributions/<project>.md`, updated in place for the
+One file per project at `$DEVWB_VAULT/Contributions/<project>.md`, updated in place for the
 project's whole life.
 
 ## What each target usage draws from

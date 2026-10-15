@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SessionEnd hook: commit and push any pending Obsidian vault changes once, at the end of the
+# SessionEnd hook: commit and push any pending vault changes once, at the end of the
 # session. This is the counterpart to vault-pull.sh (SessionStart): the vault is pulled once at
 # session start, written freely during the session, and flushed to the remote once here — the
 # skills themselves never commit or push.
@@ -9,7 +9,7 @@
 
 set -u
 
-# Vault resolution is shared by every hook: env var, the claudesidion config file, the legacy
+# Vault resolution is shared by every hook: env var, the dev-workbook config file, the legacy
 # ~/.claude file, then the default. See lib.sh.
 # shellcheck source=hooks/lib.sh
 . "$(dirname "$0")/lib.sh" 2>/dev/null || exit 0
@@ -30,8 +30,8 @@ git -C "$VAULT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 # line in the warnings relay: session-end output reaches no one, so the next start reports it.
 say() {
   local w
-  printf 'claudesidion: %s\n' "$1"
-  [ -n "${CLAUDESIDION_NO_RELAY:-}" ] && return 0
+  printf 'dev-workbook: %s\n' "$1"
+  [ -n "${DEVWB_NO_RELAY:-}" ] && return 0
   w="$(warnings_file "$VAULT")" && printf '%s\n' "$1" >> "$w" 2>/dev/null
   return 0
 }

@@ -8,9 +8,9 @@ description: Maintains a per-repository workspace in the user's markdown vault (
 Keep a durable, per-repo workspace in the user's markdown vault (Obsidian, Foam, …) so ongoing development work has one
 findable home — simpler than scattering context across ticket trackers, issues, and code comments.
 
-**Vault location:** resolve in this order — (1) the `OBSIDIAN_VAULT` environment variable, (2) the config file `${XDG_CONFIG_HOME:-~/.config}/claudesidion/vault`, (3) the legacy config file `~/.claude/obsidian-vault`, (4) the default `~/ObsidianVault`. A config file holds one line, the vault's path (whitespace trimmed, a leading `~/` or `$HOME/` expanded); `claudesidion vault-path` prints the result. If none of them yields an existing directory, ask the user where their vault is and write the answer to `~/.config/claudesidion/vault` (creating the folder) so every future session and hook finds it. Use the resolved absolute path (written below as `$OBSIDIAN_VAULT`) for every read/write.
+**Vault location:** resolve in this order — (1) the `DEVWB_VAULT` environment variable (or the pre-3.0 `OBSIDIAN_VAULT`), (2) the config file `${XDG_CONFIG_HOME:-~/.config}/dev-workbook/vault` (or the pre-3.0 `…/claudesidion/vault`), (3) the legacy config file `~/.claude/obsidian-vault`, (4) the default `~/ObsidianVault`. A config file holds one line, the vault's path (whitespace trimmed, a leading `~/` or `$HOME/` expanded); `dev-workbook vault-path` prints the result. If none of them yields an existing directory, ask the user where their vault is and write the answer to `~/.config/dev-workbook/vault` (creating the folder) so every future session and hook finds it. Use the resolved absolute path (written below as `$DEVWB_VAULT`) for every read/write.
 
-**Plugin tools** run through the `claudesidion` command. If `command -v claudesidion` finds nothing, run `python3 "<plugin root>/bin/claudesidion"` instead — the plugin root is two levels above this skill's base directory. A skill installed on its own, outside the plugin, needs the command on PATH: `ln -s <plugin root>/bin/claudesidion ~/.local/bin/`.
+**Plugin tools** run through the `dev-workbook` command. If `command -v dev-workbook` finds nothing, run `python3 "<plugin root>/bin/dev-workbook"` instead — the plugin root is two levels above this skill's base directory. A skill installed on its own, outside the plugin, needs the command on PATH: `ln -s <plugin root>/bin/dev-workbook ~/.local/bin/`.
 
 You typically run this skill while the user's working directory is *a different repo*. Always address
 the vault by its absolute path; derive the current repo from the working directory, not the vault.
@@ -19,11 +19,11 @@ the vault by its absolute path; derive the current repo from the working directo
 
 Two files live at the **vault root**, not inside any workspace:
 
-- `$OBSIDIAN_VAULT/Projects/WorkspaceIndex.md` — the repo → workspace map (see Step 1).
+- `$DEVWB_VAULT/Projects/WorkspaceIndex.md` — the repo → workspace map (see Step 1).
   A vault from before 2.0 has it as `Projects/_index.md`, and its archive as `Tasks Archive.md`:
   read and update the old file in place until `condense-vault` renames it. Never create the new
   name beside the old one.
-- `$OBSIDIAN_VAULT/TasksArchive.md` — the human-friendly day-by-day summary (see
+- `$DEVWB_VAULT/TasksArchive.md` — the human-friendly day-by-day summary (see
   "Maintaining the TasksArchive" below). Create it from the template in
   [reference/templates.md](reference/templates.md).
 
@@ -36,11 +36,11 @@ Decide with one check — does the vault contain notes this plugin did not put t
 
 ```bash
 # Any markdown outside the paths this plugin owns?
-find "$OBSIDIAN_VAULT" -name '*.md' -not -path '*/.git/*' \
-  -not -path "$OBSIDIAN_VAULT/Projects/*" \
-  -not -path "$OBSIDIAN_VAULT/Resources/*" \
-  -not -path "$OBSIDIAN_VAULT/Contributions/*" \
-  -not -path "$OBSIDIAN_VAULT/Archived/*" | head -5
+find "$DEVWB_VAULT" -name '*.md' -not -path '*/.git/*' \
+  -not -path "$DEVWB_VAULT/Projects/*" \
+  -not -path "$DEVWB_VAULT/Resources/*" \
+  -not -path "$DEVWB_VAULT/Contributions/*" \
+  -not -path "$DEVWB_VAULT/Archived/*" | head -5
 ```
 
 - **Empty vault, or nothing but this plugin's own folders** → create the two files without asking.
@@ -63,7 +63,7 @@ Once either file exists, this step is done and never asks again.
 ## Step 1 — Locate the workspace
 
 The vault holds an index that maps each repo to its workspace folder, by a path **relative to this machine's code root**:
-`$OBSIDIAN_VAULT/Projects/WorkspaceIndex.md`
+`$DEVWB_VAULT/Projects/WorkspaceIndex.md`
 
 **`WorkspaceIndex.md` is the only way to choose a workspace.** Never pick one by browsing `Projects/` or by
 grepping for a term — a trial or archived copy can look more relevant than the live workspace,
@@ -73,9 +73,9 @@ because it is the one that has been reorganised. Read the index first, every tim
    if not a git repo). Call its basename `<repo>`.
 
    **Resolve the code root**, which is what index rows are relative to: the `CODE_ROOT` environment
-   variable, then `${XDG_CONFIG_HOME:-~/.config}/claudesidion/code-root`, then the legacy
+   variable, then `${XDG_CONFIG_HOME:-~/.config}/dev-workbook/code-root` (or the pre-3.0 `…/claudesidion/code-root`), then the legacy
    `~/.claude/code-root` (one line each, whitespace trimmed, leading `~/` or `$HOME/` expanded),
-   then the default `~/code`. `claudesidion code-root` prints the result.
+   then the default `~/code`. `dev-workbook code-root` prints the result.
 
 2. Read `WorkspaceIndex.md` and match. Rows hold paths **relative to the code root**; a row starting with
    `/` is absolute and matched literally. See "Paths are machine-relative" in
@@ -129,7 +129,7 @@ or written.
 
 To scaffold:
 
-1. Create `$OBSIDIAN_VAULT/Projects/<Repo>/` — the repo's name in PascalCase (`home-budgeter` →
+1. Create `$DEVWB_VAULT/Projects/<Repo>/` — the repo's name in PascalCase (`home-budgeter` →
    `HomeBudgeter`) — and, inside it, the folders from
    [reference/structure.md](reference/structure.md): `Tickets/`, `Epics/`, `Playbooks/`, `Research/`,
    `Notes/`, `Decisions/`, `Threads/`, `Log/`. **Create each on first use, never empty** — an empty folder is
@@ -341,7 +341,7 @@ vault is untidy.
 
 ## Maintaining the TasksArchive
 
-`$OBSIDIAN_VAULT/TasksArchive.md` is the quick-reference the user scans before a personal update
+`$DEVWB_VAULT/TasksArchive.md` is the quick-reference the user scans before a personal update
 meeting: **one line per working day**, condensed enough to take in at a glance months later. It is
 the thin layer above the per-repo `ProgressLog.md` files, never a replacement for them.
 
@@ -465,14 +465,14 @@ Write for **someone scanning for one fact**, not someone reading start to finish
 
 ## Vault git sync
 
-**Check who syncs first.** The plugin's hooks sync the vault at the session boundaries — on session start one pulls it to latest, and on session end one regenerates the indexes, then commits and pushes everything as a single commit. Each start writes a heartbeat to `.git/claudesidion-hooks` inside the vault:
+**Check who syncs first.** The plugin's hooks sync the vault at the session boundaries — on session start one pulls it to latest, and on session end one regenerates the indexes, then commits and pushes everything as a single commit. Each start writes a heartbeat to `.git/dev-workbook-hooks` inside the vault:
 
 ```bash
-find "$(git -C "$OBSIDIAN_VAULT" rev-parse --absolute-git-dir)" -maxdepth 1 -name claudesidion-hooks -mmin -1440
+find "$(git -C "$DEVWB_VAULT" rev-parse --absolute-git-dir)" -maxdepth 1 -name dev-workbook-hooks -mmin -1440
 ```
 
 - **Heartbeat less than a day old** → the hooks are installed. **Do not run `git pull`, `git add`, `git commit` or `git push` on the vault**; write the files and move on.
-- **No heartbeat, or an old one** → this harness runs no hooks, so sync yourself: `git -C "$OBSIDIAN_VAULT" pull --ff-only` before your first read, and when the user closes out the session run `claudesidion maintain`, then stage only the paths the plugin owns (`git -C "$OBSIDIAN_VAULT" add -- Projects Resources Contributions Home.md TasksArchive.md WorkPlanning.md`, skipping any that do not exist), commit them as one single-line commit (`vault: session updates YYYY-MM-DD`) and push. Never `git add -A`, and never commit mid-merge or on a detached HEAD. If the push fails, leave the commit and tell the user.
+- **No heartbeat, or an old one** → this harness runs no hooks, so sync yourself: `git -C "$DEVWB_VAULT" pull --ff-only` before your first read, and when the user closes out the session run `dev-workbook maintain`, then stage only the paths the plugin owns (`git -C "$DEVWB_VAULT" add -- Projects Resources Contributions Home.md TasksArchive.md WorkPlanning.md`, skipping any that do not exist), commit them as one single-line commit (`vault: session updates YYYY-MM-DD`) and push. Never `git add -A`, and never commit mid-merge or on a detached HEAD. If the push fails, leave the commit and tell the user.
 
 If the vault is not under version control, there is nothing to sync (and you should never `git init` it).
 ## Conventions

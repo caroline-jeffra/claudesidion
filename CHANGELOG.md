@@ -14,6 +14,22 @@ are minor.
 
 ## [Unreleased]
 
+## [3.0.0] — 2026-10-15
+
+**claudesidion is now dev-workbook.** The old name tied the plugin to Claude Code and Obsidian; it is a working memory for any coding agent, in any markdown viewer. The vault layout is unchanged — this is breaking only because the plugin's name changed.
+
+### Changed
+
+- **Plugin and marketplace are `dev-workbook@dev-workbook`.** An existing `claudesidion@claudesidion` install stops loading once its marketplace updates; reinstall with the four commands in the README's "Migrating from claudesidion".
+- **The command is `dev-workbook`, with `devwb` as a short alias.** There is no `claudesidion` command any more.
+- **The vault environment variable is `DEVWB_VAULT`** and the config folder `~/.config/dev-workbook/`.
+- **Vault markers are renamed:** `Projects/.dev-workbook-version`, and `.git/dev-workbook-hooks` / `.git/dev-workbook-warnings` inside the vault's git folder.
+- **Manifests and README describe the plugin without naming one harness or viewer.**
+
+### Deprecated
+
+- **The pre-3.0 names are still read, after the new ones:** `OBSIDIAN_VAULT`, `~/.config/claudesidion/`, `Projects/.claudesidion-version` (the newer of the two records counts) and `.git/claudesidion-warnings`. They are never written, and stop being read in 4.0.
+
 ## [2.6.0] — 2026-10-15
 
 Portability step 4: one session entry point any harness can call.
@@ -291,7 +307,7 @@ They are listed because they describe what the plugin used to do to a vault.
   internal hostnames, real ticket keys, and an internal system name. The repository was then rebuilt
   from a single commit so no pre-scrub object remains reachable.
 
-[Unreleased]: https://github.com/caroline-jeffra/claudesidion/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/caroline-jeffra/dev-workbook/compare/v3.0.0...HEAD
 [1.0.1]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v1.0.1
 [1.0.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v1.0.0
 [0.4.0]: https://github.com/caroline-jeffra/claudesidion/releases/tag/v0.4.0

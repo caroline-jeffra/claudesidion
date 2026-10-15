@@ -1,7 +1,8 @@
-# claudesidion
+# dev-workbook
 
-Claude Code skills that turn an [Obsidian](https://obsidian.md) vault into a durable, cross-project
-home for your work — notes, per-repo workspaces, and imported project context.
+Working memory for coding agents, kept in a plain markdown vault. Skills and session hooks give every repo a durable workspace — what's next, what was decided, what is unfinished — plus notes, imported project context and career-facing contribution summaries.
+
+It runs under Claude Code today, and the vault reads in any wikilink-aware markdown viewer ([Obsidian](https://obsidian.md), [Foam](https://foambubble.github.io/foam/), …). The command is `dev-workbook`, with `devwb` as a short alias. **Formerly `claudesidion`** — see [Migrating from claudesidion](#migrating-from-claudesidion).
 
 ## Skills
 
@@ -27,10 +28,10 @@ home for your work — notes, per-repo workspaces, and imported project context.
 
 Skills and hooks resolve the vault path in this order:
 
-1. the `OBSIDIAN_VAULT` environment variable,
-2. the config file `~/.config/claudesidion/vault` (under `$XDG_CONFIG_HOME` if you set it) — one
+1. the `DEVWB_VAULT` environment variable, then the pre-3.0 `OBSIDIAN_VAULT`,
+2. the config file `~/.config/dev-workbook/vault` (under `$XDG_CONFIG_HOME` if you set it) — one
    line containing the vault's path. Surrounding whitespace is trimmed, and a leading `~/` or
-   `$HOME/` is expanded,
+   `$HOME/` is expanded. The pre-3.0 `~/.config/claudesidion/vault` is read next,
 3. the legacy config file `~/.claude/obsidian-vault`, read the same way — existing setups keep
    working,
 4. the default `~/ObsidianVault`.
@@ -39,8 +40,8 @@ Skills and hooks resolve the vault path in this order:
 hook shells or non-interactive sessions:
 
 ```bash
-mkdir -p ~/.config/claudesidion
-echo "$HOME/path/to/your/vault" > ~/.config/claudesidion/vault
+mkdir -p ~/.config/dev-workbook
+echo "$HOME/path/to/your/vault" > ~/.config/dev-workbook/vault
 ```
 
 The vault can have any name, anywhere on disk (create it first if you don't have one — an empty
@@ -50,10 +51,10 @@ silent until it's set.
 
 ### 1b. Point at your code (optional)
 
-The workspace index records where each repo lives **relative to a code root**, so one entry is correct on every machine you sync the vault to. The root resolves like the vault path: the `CODE_ROOT` environment variable, then `~/.config/claudesidion/code-root` (one line), then the legacy `~/.claude/code-root`, then the default `~/code`.
+The workspace index records where each repo lives **relative to a code root**, so one entry is correct on every machine you sync the vault to. The root resolves like the vault path: the `CODE_ROOT` environment variable, then `~/.config/dev-workbook/code-root` (one line), then the pre-3.0 `~/.config/claudesidion/code-root`, then the legacy `~/.claude/code-root`, then the default `~/code`.
 
 ```bash
-echo "$HOME/code" > ~/.config/claudesidion/code-root
+echo "$HOME/code" > ~/.config/dev-workbook/code-root
 ```
 
 Skip this if your repos are already in `~/code`. A repo living outside the root is recorded with its absolute path instead, so the root never becomes a hard constraint.
@@ -65,8 +66,8 @@ Why it exists: an absolute path like `/Users/ada/code/app` is only correct on on
 **As a plugin marketplace** (recommended):
 
 ```
-/plugin marketplace add caroline-jeffra/claudesidion
-/plugin install claudesidion
+/plugin marketplace add caroline-jeffra/dev-workbook
+/plugin install dev-workbook
 ```
 
 This is the only path that installs the **hooks** as well as the skills.
@@ -74,17 +75,17 @@ This is the only path that installs the **hooks** as well as the skills.
 **Or clone and symlink the skills** into your user skills directory:
 
 ```bash
-git clone https://github.com/caroline-jeffra/claudesidion.git ~/code/claudesidion
+git clone https://github.com/caroline-jeffra/dev-workbook.git ~/code/dev-workbook
 mkdir -p ~/.claude/skills
-for s in ~/code/claudesidion/skills/*/; do
+for s in ~/code/dev-workbook/skills/*/; do
   ln -s "$s" ~/.claude/skills/
 done
-mkdir -p ~/.local/bin && ln -s ~/code/claudesidion/bin/claudesidion ~/.local/bin/
+mkdir -p ~/.local/bin && ln -s ~/code/dev-workbook/bin/dev-workbook ~/code/dev-workbook/bin/devwb ~/.local/bin/
 ```
 
-The last line puts the `claudesidion` command on your PATH. Skills run the plugin's tools (lint,
+The last line puts the `dev-workbook` command, and its short alias `devwb`, on your PATH. Skills run the plugin's tools (lint,
 rename, maintain, hours) through it, and a skill installed outside the plugin has no other way to
-find them. `claudesidion --help` lists its commands.
+find them. `dev-workbook --help` lists its commands.
 
 > [!warning]
 > **The symlink path installs no hooks.** You get the skills, but not the vault git sync, the
@@ -96,12 +97,12 @@ find them. `claudesidion --help` lists its commands.
 
 ### Other coding agents
 
-The skills are plain Agent Skills and work in any harness that reads them. The session hooks are Claude Code's `hooks/hooks.json`; any other harness gets the same behaviour from two commands, once `claudesidion` is on your PATH (see the symlink install above):
+The skills are plain Agent Skills and work in any harness that reads them. The session hooks are Claude Code's `hooks/hooks.json`; any other harness gets the same behaviour from two commands, once `dev-workbook` is on your PATH (see the symlink install above):
 
 | Command | Run it at | What it does |
 | --- | --- | --- |
-| `claudesidion start --format <claude\|cursor\|plain>` | session start | Relays what the last session's exit reported, commits changes an earlier session left uncommitted, flushes stranded commits, pulls, then runs the size check and the condense reminder. Prints the session context once, in the harness's format. |
-| `claudesidion end` | session end, if the harness has one | Refreshes indexes, commits the plugin's folders, pushes. |
+| `dev-workbook start --format <claude\|cursor\|plain>` | session start | Relays what the last session's exit reported, commits changes an earlier session left uncommitted, flushes stranded commits, pulls, then runs the size check and the condense reminder. Prints the session context once, in the harness's format. |
+| `dev-workbook end` | session end, if the harness has one | Refreshes indexes, commits the plugin's folders, pushes. |
 
 A harness with no session-end event still works: the next `start` commits what the last session left. Whatever `end` reports is also relayed by the next `start`, since few harnesses show session-end output.
 
@@ -111,7 +112,7 @@ Claude Code does **not** auto-pull marketplace plugins — the marketplace is ca
 stays put until you refresh it. After new commits land here, on each machine run:
 
 ```
-/plugin marketplace update claudesidion
+/plugin marketplace update dev-workbook
 /reload-plugins
 ```
 
@@ -122,6 +123,26 @@ without a restart.
 Updates are **gated on the version number**, not on new commits: the `version` field in
 `plugin.json` is what the marketplace compares against, so you receive a change once that field is
 bumped and a release is cut, rather than on every push to `main`.
+
+## Migrating from claudesidion
+
+3.0.0 renamed the plugin from `claudesidion` to `dev-workbook`. **Your vault needs no changes**, but an existing install has to be replaced: once the marketplace updates, the old `claudesidion@claudesidion` entry stops loading.
+
+```
+/plugin uninstall claudesidion@claudesidion
+/plugin marketplace remove claudesidion
+/plugin marketplace add caroline-jeffra/dev-workbook
+/plugin install dev-workbook@dev-workbook
+```
+
+| Old | New | Old still read? |
+| --- | --- | --- |
+| `claudesidion` command | `dev-workbook`, alias `devwb` | No — re-create any symlink on your PATH |
+| `OBSIDIAN_VAULT` | `DEVWB_VAULT` | Yes, after the new one |
+| `~/.config/claudesidion/` | `~/.config/dev-workbook/` | Yes, after the new one |
+| `Projects/.claudesidion-version` | `Projects/.dev-workbook-version` | Yes — the newer of the two counts |
+
+Moving your config is optional: `mv ~/.config/claudesidion ~/.config/dev-workbook`. The old names stop being read in 4.0.
 
 ## Versioning
 
@@ -177,9 +198,9 @@ Each type has a template, a naming pattern and — for the short types — a wor
 
 **A finished thread is closed, not left behind.** Its decisions, knowledge and leftover items move to their own notes, and the thread shrinks to a Goal / Outcome / Moved-to stub.
 
-**Time tracking is optional, per project, and only on request.** `TimeTracking.md` is a phases table (estimate vs actual hours, variance, sittings, dates, links) plus a weekly-hours table. `claudesidion hours` measures active hours from Claude Code transcripts; see [`time-tracking.md`](skills/manage-project-workspaces/reference/time-tracking.md).
+**Time tracking is optional, per project, and only on request.** `TimeTracking.md` is a phases table (estimate vs actual hours, variance, sittings, dates, links) plus a weekly-hours table. `dev-workbook hours` measures active hours from Claude Code transcripts; see [`time-tracking.md`](skills/manage-project-workspaces/reference/time-tracking.md).
 
-`claudesidion lint` reports every note that breaks the contract, without changing anything; `condense-vault` works through the findings. Renames go through `claudesidion rename`, which moves a note and rewrites every link and supersession reference to it; `claudesidion qualify` rewrites ambiguous links to log days and structural files with their workspace path.
+`dev-workbook lint` reports every note that breaks the contract, without changing anything; `condense-vault` works through the findings. Renames go through `dev-workbook rename`, which moves a note and rewrites every link and supersession reference to it; `dev-workbook qualify` rewrites ambiguous links to log days and structural files with their workspace path.
 
 ### Workspace layout
 
@@ -207,7 +228,7 @@ If your vault is itself a git repository, the plugin syncs it **at the session b
 every write**: a `SessionStart` hook pulls it (`git pull --ff-only`) once as the session begins, and a
 `SessionEnd` hook commits the session's work as one commit and pushes it. The skills themselves never
 touch vault git while the hooks are running — each session start writes a heartbeat to
-`.git/claudesidion-hooks`, and a skill that finds it fresh just writes files. Under a harness with no
+`.git/dev-workbook-hooks`, and a skill that finds it fresh just writes files. Under a harness with no
 hooks (no heartbeat, or one over a day old), the skills pull before their first read and commit and
 push the same owned paths when you close out the session.
 
@@ -285,7 +306,7 @@ regenerates index notes, described below.
   **Sessions started before an upgrade leave the vault alone.** Hooks load when a session starts,
   so a session still open from before an upgrade would otherwise regenerate indexes in the old
   format when it exits. Each session start records the plugin version in
-  `Projects/.claudesidion-version`, which the session commit syncs to your other machines, and a
+  `Projects/.dev-workbook-version`, which the session commit syncs to your other machines, and a
   maintenance hook older than that record does nothing. A session start on an out-of-date install
   says so.
 
@@ -324,7 +345,7 @@ response-time commitment and no guarantee that any given bug gets fixed**. Bug r
 genuinely useful — the plugin was built by one person against one vault, so most of what is wrong
 with it is only visible from a vault laid out differently.
 
-- **Found a bug?** [Open an issue](https://github.com/caroline-jeffra/claudesidion/issues/new/choose).
+- **Found a bug?** [Open an issue](https://github.com/caroline-jeffra/dev-workbook/issues/new/choose).
   The template asks for the commit SHA, how you installed it, and any hook output; those three
   usually settle it.
 - **Security problem** — data loss, a secret getting committed, anything written outside your vault?

@@ -1,11 +1,11 @@
 # shellcheck shell=bash
-# Shared helpers for every claudesidion hook: path resolution, output formats, and the warnings
+# Shared helpers for every dev-workbook hook: path resolution, output formats, and the warnings
 # relay. Source it; it defines functions only.
-# hooks/claudesidion_paths.py is the Python twin — keep the two in step (tests check they agree).
+# hooks/dev_workbook_paths.py is the Python twin — keep the two in step (tests check they agree).
 #
 # Each path resolves in the same order:
-#   1. an environment variable              (OBSIDIAN_VAULT / CODE_ROOT)
-#   2. ${XDG_CONFIG_HOME:-~/.config}/claudesidion/<name>   (vault / code-root)
+#   1. an environment variable              (DEVWB_VAULT, then the pre-3.0 OBSIDIAN_VAULT / CODE_ROOT)
+#   2. ${XDG_CONFIG_HOME:-~/.config}/dev-workbook/<name>, then the pre-3.0 .../claudesidion/<name>
 #   3. the legacy ~/.claude/<name> file     (obsidian-vault / code-root)
 #   4. a default                             (~/ObsidianVault / ~/code)
 # The config files exist because interactive profile exports do not reach hook shells. Each is
@@ -36,6 +36,8 @@ resolve_path() {
   local xdg="${XDG_CONFIG_HOME:-$HOME/.config}"
   if [ -n "$1" ]; then
     printf '%s\n' "$1"
+  elif read_path_file "$xdg/dev-workbook/$2"; then
+    :
   elif read_path_file "$xdg/claudesidion/$2"; then
     :
   elif read_path_file "$HOME/.claude/$3"; then
@@ -45,17 +47,17 @@ resolve_path() {
   fi
 }
 
-resolve_vault() { resolve_path "${OBSIDIAN_VAULT:-}" vault obsidian-vault "$HOME/ObsidianVault"; }
+resolve_vault() { resolve_path "${DEVWB_VAULT:-${OBSIDIAN_VAULT:-}}" vault obsidian-vault "$HOME/ObsidianVault"; }
 resolve_code_root() { resolve_path "${CODE_ROOT:-}" code-root code-root "$HOME/code"; }
 
 # ---------------------------------------------------------------- output
 
 # emit_context <text> — session-start context for the agent, in the harness's format, chosen by
-# CLAUDESIDION_FORMAT: `claude` (default) prints Claude Code's hookSpecificOutput JSON, `cursor`
+# DEVWB_FORMAT: `claude` (default) prints Claude Code's hookSpecificOutput JSON, `cursor`
 # prints {"additional_context": ...}, `plain` prints the text. JSON needs jq; without it the
 # hook stays silent rather than erroring.
 emit_context() {
-  case "${CLAUDESIDION_FORMAT:-claude}" in
+  case "${DEVWB_FORMAT:-claude}" in
     plain)
       printf '%s\n' "$1" ;;
     cursor)
@@ -70,7 +72,7 @@ emit_context() {
 }
 
 # can_emit — true when emit_context can produce output, so a hook can skip work it could not report.
-can_emit() { [ "${CLAUDESIDION_FORMAT:-claude}" = plain ] || command -v jq >/dev/null 2>&1; }
+can_emit() { [ "${DEVWB_FORMAT:-claude}" = plain ] || command -v jq >/dev/null 2>&1; }
 
 # ---------------------------------------------------------------- warnings relay
 
@@ -81,5 +83,5 @@ warnings_file() {
   local dir
   dir="$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null)" || return 1
   [ -n "$dir" ] || return 1
-  printf '%s/claudesidion-warnings\n' "$dir"
+  printf '%s/dev-workbook-warnings\n' "$dir"
 }

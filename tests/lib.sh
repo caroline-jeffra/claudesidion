@@ -15,7 +15,7 @@ FAIL=0
 FAILED_NAMES=()
 
 
-TEST_TMP="$(mktemp -d "${TMPDIR:-/tmp}/claudesidion-tests.XXXXXX")"
+TEST_TMP="$(mktemp -d "${TMPDIR:-/tmp}/dev-workbook-tests.XXXXXX")"
 trap 'rm -rf "$TEST_TMP"' EXIT
 
 # ---------------------------------------------------------------------------
@@ -134,7 +134,7 @@ run_hook() {
   local fake_home="$TEST_TMP/home.$$"
   mkdir -p "$fake_home"
   HOOK_OUT="$(printf '%s' "$payload" \
-    | env HOME="$fake_home" OBSIDIAN_VAULT="$vault" bash "$HOOKS/$hook" 2>&1)"
+    | env HOME="$fake_home" DEVWB_VAULT="$vault" bash "$HOOKS/$hook" 2>&1)"
   HOOK_RC=$?
   return 0
 }
@@ -145,7 +145,7 @@ run_hook_no_vault() {
   local fake_home="$TEST_TMP/home.novault.$$"
   mkdir -p "$fake_home"
   # shellcheck disable=SC2034  # consumed by the sourcing suite
-  HOOK_OUT="$(printf '' | env -u OBSIDIAN_VAULT HOME="$fake_home" bash "$HOOKS/$hook" 2>&1)"
+  HOOK_OUT="$(printf '' | env -u DEVWB_VAULT HOME="$fake_home" bash "$HOOKS/$hook" 2>&1)"
   # shellcheck disable=SC2034  # consumed by the sourcing suite
   HOOK_RC=$?
   return 0

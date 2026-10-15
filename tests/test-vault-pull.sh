@@ -37,7 +37,7 @@ run_hook vault-pull.sh "$v"
 assert_eq 0 "$HOOK_RC" 'vault not a git repo: exit 0'
 assert_empty "$HOOK_OUT" 'vault not a git repo: silent'
 
-assert_eq 0 "$([ -e "$v/.git/claudesidion-hooks" ] && echo 1 || echo 0)" \
+assert_eq 0 "$([ -e "$v/.git/dev-workbook-hooks" ] && echo 1 || echo 0)" \
   'vault not a git repo: no heartbeat written'
 
 # ---------------------------------------------------------------------------
@@ -46,8 +46,8 @@ section 'Heartbeat tells the skills the hooks are installed'
 
 v="$(build_vault pull-heartbeat)"
 run_hook vault-pull.sh "$v"
-assert_eq 1 "$([ -s "$v/.git/claudesidion-hooks" ] && echo 1 || echo 0)" 'heartbeat written inside .git'
-assert_empty "$(git -C "$v" status --porcelain -- . ':!Projects/.claudesidion-version')" 'heartbeat leaves the work tree clean'
+assert_eq 1 "$([ -s "$v/.git/dev-workbook-hooks" ] && echo 1 || echo 0)" 'heartbeat written inside .git'
+assert_empty "$(git -C "$v" status --porcelain -- . ':!Projects/.dev-workbook-version')" 'heartbeat leaves the work tree clean'
 
 # ---------------------------------------------------------------------------
 section 'Stale-session guard: the plugin version is recorded at session start'
@@ -57,18 +57,18 @@ mine="$(sed -n 's/.*"version": *"\([0-9.]*\)".*/\1/p' "$HOOKS/../.claude-plugin/
 
 v="$(build_vault pull-version)"
 run_hook vault-pull.sh "$v"
-assert_eq "$mine" "$(cat "$v/Projects/.claudesidion-version" 2>/dev/null)" 'records this plugin version'
+assert_eq "$mine" "$(cat "$v/Projects/.dev-workbook-version" 2>/dev/null)" 'records this plugin version'
 assert_not_contains "$HOOK_OUT" 'maintenance is off' 'current plugin: no stale notice'
 
 v="$(build_vault pull-newer)"
-printf '99.0.0\n' > "$v/Projects/.claudesidion-version"
+printf '99.0.0\n' > "$v/Projects/.dev-workbook-version"
 run_hook vault-pull.sh "$v"
-assert_eq '99.0.0' "$(cat "$v/Projects/.claudesidion-version")" 'never lowers a newer record'
+assert_eq '99.0.0' "$(cat "$v/Projects/.dev-workbook-version")" 'never lowers a newer record'
 assert_contains "$HOOK_OUT" 'index maintenance is off' 'stale plugin: the session is told'
 
 v="$(build_vault pull-version-local --no-git)"
 run_hook vault-pull.sh "$v"
-assert_eq "$mine" "$(cat "$v/Projects/.claudesidion-version" 2>/dev/null)" 'local vault: version still recorded'
+assert_eq "$mine" "$(cat "$v/Projects/.dev-workbook-version" 2>/dev/null)" 'local vault: version still recorded'
 assert_empty "$HOOK_OUT" 'local vault: still silent'
 
 # ---------------------------------------------------------------------------
@@ -76,10 +76,16 @@ section 'Recovery at session start: relay exit warnings, commit leftovers'
 # ---------------------------------------------------------------------------
 
 v="$(build_vault pull-relay)"
-printf 'push was rejected\n' > "$v/.git/claudesidion-warnings"
+printf 'push was rejected\n' > "$v/.git/dev-workbook-warnings"
 run_hook vault-pull.sh "$v"
 assert_contains "$HOOK_OUT" 'push was rejected' 'the last exit warning is relayed'
-assert_file_absent "$v/.git/claudesidion-warnings" 'and relayed only once'
+assert_file_absent "$v/.git/dev-workbook-warnings" 'and relayed only once'
+
+v="$(build_vault pull-relay-pre3)"
+printf 'old name rejected\n' > "$v/.git/claudesidion-warnings"
+run_hook vault-pull.sh "$v"
+assert_contains "$HOOK_OUT" 'old name rejected' 'a pre-3.0 warnings file is relayed too'
+assert_file_absent "$v/.git/claudesidion-warnings" 'and removed'
 
 v="$(build_vault pull-leftover)"
 printf 'left behind\n' >> "$v/Projects/Note.md"
@@ -87,7 +93,7 @@ run_hook vault-pull.sh "$v"
 assert_contains "$HOOK_OUT" 'not yet committed' 'leftover changes are reported'
 assert_eq "" "$(gitq "$v" status --porcelain -- Projects/Note.md)" 'leftover changes are committed'
 assert_eq 0 "$(unpushed_ct "$v")" 'and pushed'
-assert_file_absent "$v/.git/claudesidion-warnings" 'start-time commit messages are not relayed again'
+assert_file_absent "$v/.git/dev-workbook-warnings" 'start-time commit messages are not relayed again'
 
 v="$(build_vault pull-leftover-unowned)"
 printf 'x\n' > "$v/stray.txt"
@@ -96,7 +102,7 @@ assert_not_contains "$HOOK_OUT" 'not yet committed' 'a change outside the owned 
 
 for fmt in plain cursor; do
   v="$(build_vault "pull-format-$fmt")"
-  out="$(env HOME="$TEST_TMP/home.$$" OBSIDIAN_VAULT="$v" CLAUDESIDION_FORMAT="$fmt" bash "$HOOKS/vault-pull.sh" 2>&1)"
+  out="$(env HOME="$TEST_TMP/home.$$" DEVWB_VAULT="$v" DEVWB_FORMAT="$fmt" bash "$HOOKS/vault-pull.sh" 2>&1)"
   case "$fmt" in
     plain)  assert_contains "$out" 'Vault pulled to latest' 'plain format prints text' ;;
     cursor) assert_contains "$out" '"additional_context"' 'cursor format prints additional_context' ;;

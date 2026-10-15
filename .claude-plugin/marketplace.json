@@ -1,14 +1,14 @@
 {
-  "name": "claudesidion",
-  "description": "Obsidian-vault integration for Claude Code: skills and hooks that keep notes, per-repo workspaces and project context in a vault.",
+  "name": "dev-workbook",
+  "description": "dev-workbook: working memory for coding agents, kept in a plain markdown vault.",
   "owner": {
     "name": "caroline-jeffra"
   },
   "plugins": [
     {
-      "name": "claudesidion",
+      "name": "dev-workbook",
       "source": "./",
-      "description": "Obsidian-vault integration skills for Claude Code: capture notes, manage per-repo workspaces, ingest project docs, and summarize contributions."
+      "description": "Working memory for coding agents in a plain markdown vault: per-repo workspaces, notes, imported project docs and contribution summaries, kept in sync by session hooks."
     }
   ]
 }

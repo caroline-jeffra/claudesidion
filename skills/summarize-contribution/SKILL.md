@@ -9,7 +9,7 @@ Produce one durable, career-facing document per project describing what the user
 hard, and what it demonstrates — written so it can be lifted into a CV, a LinkedIn update, a 360
 review, or a blog-post outline without being rewritten each time.
 
-**Vault location:** resolve in this order — (1) the `OBSIDIAN_VAULT` environment variable, (2) the config file `${XDG_CONFIG_HOME:-~/.config}/claudesidion/vault`, (3) the legacy config file `~/.claude/obsidian-vault`, (4) the default `~/ObsidianVault`. A config file holds one line, the vault's path (whitespace trimmed, a leading `~/` or `$HOME/` expanded); `claudesidion vault-path` prints the result. If none of them yields an existing directory, ask the user where their vault is and write the answer to `~/.config/claudesidion/vault` (creating the folder) so every future session and hook finds it. Use the resolved absolute path (written below as `$OBSIDIAN_VAULT`) for every read/write.
+**Vault location:** resolve in this order — (1) the `DEVWB_VAULT` environment variable (or the pre-3.0 `OBSIDIAN_VAULT`), (2) the config file `${XDG_CONFIG_HOME:-~/.config}/dev-workbook/vault` (or the pre-3.0 `…/claudesidion/vault`), (3) the legacy config file `~/.claude/obsidian-vault`, (4) the default `~/ObsidianVault`. A config file holds one line, the vault's path (whitespace trimmed, a leading `~/` or `$HOME/` expanded); `dev-workbook vault-path` prints the result. If none of them yields an existing directory, ask the user where their vault is and write the answer to `~/.config/dev-workbook/vault` (creating the folder) so every future session and hook finds it. Use the resolved absolute path (written below as `$DEVWB_VAULT`) for every read/write.
 
 You normally run this while the working directory is *the project's repo*, not the vault. Address the
 vault by absolute path; derive the project from the working directory.
@@ -19,7 +19,7 @@ vault by absolute path; derive the project from the working directory.
 **One file per project**, all in a single top-level folder:
 
 ```
-$OBSIDIAN_VAULT/Contributions/<project>.md
+$DEVWB_VAULT/Contributions/<project>.md
 ```
 
 - `<project>` is the workspace folder name from `Projects/WorkspaceIndex.md` — so `Contributions/Portal.md`
@@ -149,7 +149,7 @@ Contribution summary progress:
 ### Step 1 — Locate the project and its existing summary
 
 1. Get the repo root (`git rev-parse --show-toplevel`, falling back to cwd) and read
-   `$OBSIDIAN_VAULT/Projects/WorkspaceIndex.md` (`Projects/_index.md` in a vault from before 2.0) to find the workspace folder. Rows hold paths relative to the machine's code root (`CODE_ROOT`, else `~/.claude/code-root`, else `~/code`); a row starting with `/` is absolute. That
+   `$DEVWB_VAULT/Projects/WorkspaceIndex.md` (`Projects/_index.md` in a vault from before 2.0) to find the workspace folder. Rows hold paths relative to the machine's code root (`CODE_ROOT`, else `~/.claude/code-root`, else `~/code`); a row starting with `/` is absolute. That
    folder's name is `<project>`.
 
    **If there is no row**, the project has no workspace. `<project>` is then undefined, and guessing
@@ -157,13 +157,13 @@ Contribution summary progress:
    one. So:
 
    - First check whether a summary already exists under a different name:
-     `ls "$OBSIDIAN_VAULT/Contributions/"` and look for anything matching this repo. If one does,
+     `ls "$DEVWB_VAULT/Contributions/"` and look for anything matching this repo. If one does,
      use that filename and say which one you matched.
    - Otherwise **ask the user what to call it**, proposing the repo directory basename as the
      default. One question, with a default, is cheaper than an unrecoverable duplicate.
    - Note in the run report that domain context will be thin without a workspace, and offer
      `manage-project-workspaces` / `ingest-project-docs`.
-2. Check whether `$OBSIDIAN_VAULT/Contributions/<project>.md` exists.
+2. Check whether `$DEVWB_VAULT/Contributions/<project>.md` exists.
    - **Exists** → this is an **update**. Read it in full before gathering anything. What is already
      recorded determines what new evidence actually matters.
    - **Missing** → this is a **create**.
@@ -269,7 +269,7 @@ colleagues, absolute figures, internal hostnames, verbatim internal text. Anythi
 either gets generalised in place or moves to the `Confidential context` section; what it must not
 do is sit unmarked in prose the user will later paste into an application.
 
-Write to `$OBSIDIAN_VAULT/Contributions/<project>.md` using the structure in
+Write to `$DEVWB_VAULT/Contributions/<project>.md` using the structure in
 [reference/template.md](reference/template.md): light frontmatter, then **Context → Major efforts →
 At a glance → Detail by theme → Signals → Story seeds → Timeline → Related notes**.
 

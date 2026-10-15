@@ -41,7 +41,7 @@ def write(p: Path, text: str) -> None:
     p.write_text(text, encoding="utf-8")
 
 
-tmp = Path(tempfile.mkdtemp(prefix="claudesidion-ql-tests."))
+tmp = Path(tempfile.mkdtemp(prefix="dev-workbook-ql-tests."))
 try:
     v = tmp / "vault"
     for proj in ("Alpha", "Beta"):

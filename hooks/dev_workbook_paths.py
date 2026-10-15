@@ -1,9 +1,10 @@
-"""Shared path resolution for claudesidion's Python tools — the twin of hooks/lib.sh.
+"""Shared path resolution for dev-workbook's Python tools — the twin of hooks/lib.sh.
 
 Each path resolves in the same order as the hooks:
 
-  1. an explicit argument, then an environment variable  (OBSIDIAN_VAULT / CODE_ROOT)
-  2. ${XDG_CONFIG_HOME:-~/.config}/claudesidion/<name>   (vault / code-root)
+  1. an explicit argument, then an environment variable  (DEVWB_VAULT, then the pre-3.0
+     OBSIDIAN_VAULT / CODE_ROOT)
+  2. ${XDG_CONFIG_HOME:-~/.config}/dev-workbook/<name>, then the pre-3.0 .../claudesidion/<name>
   3. the legacy ~/.claude/<name> file                     (obsidian-vault / code-root)
   4. a default                                            (~/ObsidianVault / ~/code)
 
@@ -17,9 +18,9 @@ import os
 from pathlib import Path
 
 
-def config_dir() -> Path:
+def config_dir(name: str = "dev-workbook") -> Path:
     base = os.environ.get("XDG_CONFIG_HOME", "").strip()
-    return (Path(base) if base else Path.home() / ".config") / "claudesidion"
+    return (Path(base) if base else Path.home() / ".config") / name
 
 
 def read_path_file(path: Path) -> Path | None:
@@ -41,20 +42,24 @@ def read_path_file(path: Path) -> Path | None:
     return Path(raw)
 
 
-def _resolve(explicit: str | None, env: str, name: str, legacy: str, default: str) -> Path:
+def _resolve(explicit: str | None, envs: tuple[str, ...], name: str, legacy: str,
+             default: str) -> Path:
     if explicit:
         return Path(explicit).expanduser()
-    value = os.environ.get(env, "")
-    if value:
-        return Path(value)
+    for env in envs:
+        value = os.environ.get(env, "")
+        if value:
+            return Path(value)
     return (read_path_file(config_dir() / name)
+            or read_path_file(config_dir("claudesidion") / name)
             or read_path_file(Path.home() / ".claude" / legacy)
             or Path.home() / default)
 
 
 def resolve_vault(explicit: str | None = None) -> Path:
-    return _resolve(explicit, "OBSIDIAN_VAULT", "vault", "obsidian-vault", "ObsidianVault")
+    return _resolve(explicit, ("DEVWB_VAULT", "OBSIDIAN_VAULT"), "vault", "obsidian-vault",
+                    "ObsidianVault")
 
 
 def resolve_code_root(explicit: str | None = None) -> Path:
-    return _resolve(explicit, "CODE_ROOT", "code-root", "code-root", "code")
+    return _resolve(explicit, ("CODE_ROOT",), "code-root", "code-root", "code")
