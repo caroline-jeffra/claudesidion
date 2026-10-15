@@ -8,7 +8,9 @@ description: Ingests an existing project's documentation and tracker context int
 Bootstrap a repo's vault workspace from context that already exists — issues, milestones, PRs/MRs,
 in-repo docs, and stray working files — so the vault starts as a real source of truth instead of empty.
 
-**Vault location:** resolve in this order — (1) the `OBSIDIAN_VAULT` environment variable, (2) the config file `~/.claude/obsidian-vault` (one line: the vault's absolute path), (3) the default `~/ObsidianVault`. If none of the three yields an existing directory, ask the user where their vault is and write the answer to `~/.claude/obsidian-vault` so every future session and hook finds it. Use the resolved absolute path (written below as `$OBSIDIAN_VAULT`) for every read/write.
+**Vault location:** resolve in this order — (1) the `OBSIDIAN_VAULT` environment variable, (2) the config file `${XDG_CONFIG_HOME:-~/.config}/claudesidion/vault`, (3) the legacy config file `~/.claude/obsidian-vault`, (4) the default `~/ObsidianVault`. A config file holds one line, the vault's path (whitespace trimmed, a leading `~/` or `$HOME/` expanded); `claudesidion vault-path` prints the result. If none of them yields an existing directory, ask the user where their vault is and write the answer to `~/.config/claudesidion/vault` (creating the folder) so every future session and hook finds it. Use the resolved absolute path (written below as `$OBSIDIAN_VAULT`) for every read/write.
+
+**Plugin tools** run through the `claudesidion` command. If `command -v claudesidion` finds nothing, run `python3 "<plugin root>/bin/claudesidion"` instead — the plugin root is two levels above this skill's base directory. A skill installed on its own, outside the plugin, needs the command on PATH: `ln -s <plugin root>/bin/claudesidion ~/.local/bin/`.
 
 This skill **feeds** the `manage-project-workspaces` structure; it does not invent a new layout.
 Read that skill's conventions if unsure where something lands.
@@ -99,7 +101,7 @@ find "$(git -C "$OBSIDIAN_VAULT" rev-parse --absolute-git-dir)" -maxdepth 1 -nam
 ```
 
 - **Heartbeat less than a day old** → the hooks are installed. **Do not run `git pull`, `git add`, `git commit` or `git push` on the vault**; write the files and move on.
-- **No heartbeat, or an old one** → this harness runs no hooks, so sync yourself: `git -C "$OBSIDIAN_VAULT" pull --ff-only` before your first read, and when the user closes out the session run `python3 "<plugin root>/hooks/vault_maintain.py" "$OBSIDIAN_VAULT"` (the plugin root is two levels above this skill's base directory), then stage only the paths the plugin owns (`git -C "$OBSIDIAN_VAULT" add -- Projects Resources Contributions Home.md TasksArchive.md WorkPlanning.md`, skipping any that do not exist), commit them as one single-line commit (`vault: session updates YYYY-MM-DD`) and push. Never `git add -A`, and never commit mid-merge or on a detached HEAD. If the push fails, leave the commit and tell the user.
+- **No heartbeat, or an old one** → this harness runs no hooks, so sync yourself: `git -C "$OBSIDIAN_VAULT" pull --ff-only` before your first read, and when the user closes out the session run `claudesidion maintain`, then stage only the paths the plugin owns (`git -C "$OBSIDIAN_VAULT" add -- Projects Resources Contributions Home.md TasksArchive.md WorkPlanning.md`, skipping any that do not exist), commit them as one single-line commit (`vault: session updates YYYY-MM-DD`) and push. Never `git add -A`, and never commit mid-merge or on a detached HEAD. If the push fails, leave the commit and tell the user.
 
 If the vault is not under version control, there is nothing to sync (and you should never `git init` it).
 ## Conventions

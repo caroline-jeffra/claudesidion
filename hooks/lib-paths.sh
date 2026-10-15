@@ -1,0 +1,48 @@
+# shellcheck shell=bash
+# Shared path resolution for every claudesidion hook. Source it; it defines functions only.
+# hooks/claudesidion_paths.py is the Python twin — keep the two in step (tests check they agree).
+#
+# Each path resolves in the same order:
+#   1. an environment variable              (OBSIDIAN_VAULT / CODE_ROOT)
+#   2. ${XDG_CONFIG_HOME:-~/.config}/claudesidion/<name>   (vault / code-root)
+#   3. the legacy ~/.claude/<name> file     (obsidian-vault / code-root)
+#   4. a default                             (~/ObsidianVault / ~/code)
+# The config files exist because interactive profile exports do not reach hook shells. Each is
+# one line; surrounding whitespace is trimmed and a leading ~ or $HOME is expanded, because a
+# hand-edited "~/Vault " would otherwise resolve to a path that does not exist and silently
+# disable the plugin.
+
+# read_path_file <file> — print the file's first line, trimmed and ~-expanded; fail if empty.
+read_path_file() {
+  local value
+  [ -f "$1" ] || return 1
+  value="$(head -n1 "$1" 2>/dev/null)"
+  value="${value#"${value%%[![:space:]]*}"}"   # leading whitespace
+  value="${value%"${value##*[![:space:]]}"}"   # trailing whitespace
+  # shellcheck disable=SC2088,SC2016  # literal '~' and '$HOME' patterns, expanded by hand
+  case "$value" in
+    '~') value="$HOME" ;;
+    '~/'*) value="$HOME/${value#\~/}" ;;
+    '$HOME') value="$HOME" ;;
+    '$HOME/'*) value="$HOME/${value#\$HOME/}" ;;
+  esac
+  [ -n "$value" ] || return 1
+  printf '%s\n' "$value"
+}
+
+# resolve_path <env value> <config name> <legacy name> <default>
+resolve_path() {
+  local xdg="${XDG_CONFIG_HOME:-$HOME/.config}"
+  if [ -n "$1" ]; then
+    printf '%s\n' "$1"
+  elif read_path_file "$xdg/claudesidion/$2"; then
+    :
+  elif read_path_file "$HOME/.claude/$3"; then
+    :
+  else
+    printf '%s\n' "$4"
+  fi
+}
+
+resolve_vault() { resolve_path "${OBSIDIAN_VAULT:-}" vault obsidian-vault "$HOME/ObsidianVault"; }
+resolve_code_root() { resolve_path "${CODE_ROOT:-}" code-root code-root "$HOME/code"; }

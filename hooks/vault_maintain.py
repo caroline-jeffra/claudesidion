@@ -1362,8 +1362,8 @@ def run_lint(vault: Path, count_only: bool) -> int:
     return 0
 
 
-def main() -> int:
-    args = sys.argv[1:]
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv[1:] if argv is None else argv
     lint_mode = "--lint" in args
     count_only = "--count" in args
     paths = [a for a in args if not a.startswith("--")]

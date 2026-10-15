@@ -14,6 +14,20 @@ are minor.
 
 ## [Unreleased]
 
+## [2.5.0] — 2026-10-15
+
+Portability step 3: skills work when installed on their own, outside the plugin folder.
+
+### Added
+
+- **`claudesidion` command** (`bin/claudesidion`) — one entry point for every tool the skills run: `lint`, `maintain`, `claim`, `rename`, `qualify`, `hours`, `vault-path` and `code-root`. Skills call `claudesidion <command>`, falling back to `python3 "<plugin root>/bin/claudesidion"`. A standalone skill install puts it on PATH with `ln -s <plugin root>/bin/claudesidion ~/.local/bin/`; it finds the rest of the plugin through the symlink.
+- **XDG config location.** The vault path and code root are read from `${XDG_CONFIG_HOME:-~/.config}/claudesidion/vault` and `.../code-root` before the legacy `~/.claude/obsidian-vault` and `~/.claude/code-root`, which keep working. Skills now write a newly asked-for vault path to the XDG file.
+
+### Changed
+
+- **One path resolver per language.** The five copies of vault resolution in the hooks are replaced by `hooks/lib-paths.sh`, and the Python one in `rename_note.py` by `hooks/claudesidion_paths.py`; a test checks the two agree case by case.
+- **Skills no longer reach scripts by `../../` paths** relative to their own folder.
+
 ## [2.4.0] — 2026-10-15
 
 ### Added

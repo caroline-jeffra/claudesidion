@@ -28,28 +28,32 @@ home for your work — notes, per-repo workspaces, and imported project context.
 Skills and hooks resolve the vault path in this order:
 
 1. the `OBSIDIAN_VAULT` environment variable,
-2. the config file `~/.claude/obsidian-vault` — one line containing the vault's path.
-   Surrounding whitespace is trimmed, and a leading `~/` or `$HOME/` is expanded,
-3. the default `~/ObsidianVault`.
+2. the config file `~/.config/claudesidion/vault` (under `$XDG_CONFIG_HOME` if you set it) — one
+   line containing the vault's path. Surrounding whitespace is trimmed, and a leading `~/` or
+   `$HOME/` is expanded,
+3. the legacy config file `~/.claude/obsidian-vault`, read the same way — existing setups keep
+   working,
+4. the default `~/ObsidianVault`.
 
 **The config file is the recommended way to set it**, because shell-profile exports don't reach
 hook shells or non-interactive sessions:
 
 ```bash
-echo "$HOME/path/to/your/vault" > ~/.claude/obsidian-vault
+mkdir -p ~/.config/claudesidion
+echo "$HOME/path/to/your/vault" > ~/.config/claudesidion/vault
 ```
 
 The vault can have any name, anywhere on disk (create it first if you don't have one — an empty
-folder Obsidian opens works fine). If none of the three locations yields an existing directory, the
+folder Obsidian opens works fine). If none of these locations yields an existing directory, the
 skills ask where your vault is and write the answer to the config file for you; the hooks stay
 silent until it's set.
 
 ### 1b. Point at your code (optional)
 
-The workspace index records where each repo lives **relative to a code root**, so one entry is correct on every machine you sync the vault to. The root resolves like the vault path: the `CODE_ROOT` environment variable, then `~/.claude/code-root` (one line), then the default `~/code`.
+The workspace index records where each repo lives **relative to a code root**, so one entry is correct on every machine you sync the vault to. The root resolves like the vault path: the `CODE_ROOT` environment variable, then `~/.config/claudesidion/code-root` (one line), then the legacy `~/.claude/code-root`, then the default `~/code`.
 
 ```bash
-echo "$HOME/code" > ~/.claude/code-root
+echo "$HOME/code" > ~/.config/claudesidion/code-root
 ```
 
 Skip this if your repos are already in `~/code`. A repo living outside the root is recorded with its absolute path instead, so the root never becomes a hard constraint.
@@ -75,7 +79,12 @@ mkdir -p ~/.claude/skills
 for s in ~/code/claudesidion/skills/*/; do
   ln -s "$s" ~/.claude/skills/
 done
+mkdir -p ~/.local/bin && ln -s ~/code/claudesidion/bin/claudesidion ~/.local/bin/
 ```
+
+The last line puts the `claudesidion` command on your PATH. Skills run the plugin's tools (lint,
+rename, maintain, hours) through it, and a skill installed outside the plugin has no other way to
+find them. `claudesidion --help` lists its commands.
 
 > [!warning]
 > **The symlink path installs no hooks.** You get the skills, but not the vault git sync, the
@@ -157,9 +166,9 @@ Each type has a template, a naming pattern and — for the short types — a wor
 
 **A finished thread is closed, not left behind.** Its decisions, knowledge and leftover items move to their own notes, and the thread shrinks to a Goal / Outcome / Moved-to stub.
 
-**Time tracking is optional, per project, and only on request.** `TimeTracking.md` is a phases table (estimate vs actual hours, variance, sittings, dates, links) plus a weekly-hours table. `scripts/session_hours.py` measures active hours from Claude Code transcripts; see [`time-tracking.md`](skills/manage-project-workspaces/reference/time-tracking.md).
+**Time tracking is optional, per project, and only on request.** `TimeTracking.md` is a phases table (estimate vs actual hours, variance, sittings, dates, links) plus a weekly-hours table. `claudesidion hours` measures active hours from Claude Code transcripts; see [`time-tracking.md`](skills/manage-project-workspaces/reference/time-tracking.md).
 
-`hooks/vault_maintain.py --lint <vault>` reports every note that breaks the contract, without changing anything; `condense-vault` works through the findings. Renames go through `scripts/rename_note.py`, which moves a note and rewrites every link and supersession reference to it; `scripts/qualify_links.py` rewrites ambiguous links to log days and structural files with their workspace path.
+`claudesidion lint` reports every note that breaks the contract, without changing anything; `condense-vault` works through the findings. Renames go through `claudesidion rename`, which moves a note and rewrites every link and supersession reference to it; `claudesidion qualify` rewrites ambiguous links to log days and structural files with their workspace path.
 
 ### Workspace layout
 

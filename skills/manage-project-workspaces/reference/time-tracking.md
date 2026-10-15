@@ -14,11 +14,11 @@ Everything else is linked, never written here: the plan and estimates live in th
 
 ## Measuring
 
-**Source: Claude Code session transcripts**, measured by `scripts/session_hours.py` in the plugin (the plugin root is two levels above this skill's base directory):
+**Source: Claude Code session transcripts**, measured by `claudesidion hours` (or `python3 "<plugin root>/bin/claudesidion" hours` when the command is not on PATH):
 
 ```bash
-python3 "<plugin root>/scripts/session_hours.py" --repo <repo path> --since <tracked_through + 1 day> --by sitting
-python3 "<plugin root>/scripts/session_hours.py" --repo <repo path> --since <first day of the week> --by week
+claudesidion hours --repo <repo path> --since <tracked_through + 1 day> --by sitting
+claudesidion hours --repo <repo path> --since <first day of the week> --by week
 ```
 
 | Rule | Why |
