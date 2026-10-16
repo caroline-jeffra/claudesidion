@@ -48,6 +48,14 @@ fi
 git_dir="$(git -C "$VAULT" rev-parse --absolute-git-dir 2>/dev/null)" \
   && date +%Y-%m-%dT%H:%M:%S > "$git_dir/dev-workbook-hooks" 2>/dev/null
 
+# --- Wait for a session end still running in the background --------------------
+# session-end.sh commits and pushes detached, so a quick relaunch can get here first. Hold the
+# same lock for the rest of this hook: committing leftovers or pulling under a running commit
+# would collide on git's index lock. The wait is bounded below this hook's own timeout; if it
+# runs out, carry on as before rather than delay the session.
+locked=""
+acquire_end_lock "$VAULT" 12 && locked=1
+
 # --- Relay what the last session's exit had to say -----------------------------
 # Session-end output reaches no one, so vault-push.sh records its warnings and they are reported
 # here, once. Control characters are stripped: the text ends up in the agent's context.
@@ -103,6 +111,8 @@ fi
 
 # After the pull, so the comparison is against the version other machines recorded.
 stale="$(claim_version)"
+[ -n "$locked" ] && release_end_lock "$VAULT"
+
 emit_context "${relayed:+$relayed }${leftover:+$leftover }${stranded:+$stranded }${status}${stale:+ $stale}"
 
 exit 0

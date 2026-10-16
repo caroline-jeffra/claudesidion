@@ -85,3 +85,67 @@ warnings_file() {
   [ -n "$dir" ] || return 1
   printf '%s/dev-workbook-warnings\n' "$dir"
 }
+
+# ---------------------------------------------------------------- session-end lock
+
+# The session-end work runs detached (see session-end.sh), so it can still be committing or
+# pushing when the next session starts, or when a second session ends. This lock serialises
+# them. It is a directory inside the vault's .git (mkdir is atomic; never committed) holding the
+# owner's PID, so a lock whose owner died is recognised as stale and taken over.
+end_lock_dir() {
+  local dir
+  dir="$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null)" || return 1
+  [ -n "$dir" ] || return 1
+  printf '%s/dev-workbook-end.lock\n' "$dir"
+}
+
+# end_lock_held <lock dir> — true while a live process owns the lock.
+end_lock_held() {
+  local pid
+  [ -d "$1" ] || return 1
+  pid="$(cat "$1/pid" 2>/dev/null)"
+  # No pid yet: the owner is between mkdir and writing it. Treat as held.
+  [ -n "$pid" ] || return 0
+  kill -0 "$pid" 2>/dev/null
+}
+
+# acquire_end_lock <vault> <seconds> — take the lock for this process, waiting up to <seconds>
+# for a live owner and taking over a dead one's. Fails if it is still held at the deadline.
+acquire_end_lock() {
+  local lock tries
+  lock="$(end_lock_dir "$1")" || return 1
+  tries=$(($2 * 5))
+  while :; do
+    if mkdir "$lock" 2>/dev/null; then
+      printf '%s\n' "$$" > "$lock/pid"
+      return 0
+    fi
+    if ! end_lock_held "$lock"; then
+      rm -rf "$lock"
+      continue
+    fi
+    [ "$tries" -gt 0 ] || return 1
+    tries=$((tries - 1))
+    sleep 0.2
+  done
+}
+
+release_end_lock() {
+  local lock
+  lock="$(end_lock_dir "$1")" || return 0
+  [ "$(cat "$lock/pid" 2>/dev/null)" = "$$" ] && rm -rf "$lock"
+  return 0
+}
+
+# wait_end_lock <vault> <seconds> — wait for a running session end to finish. Fails on timeout.
+wait_end_lock() {
+  local lock tries
+  lock="$(end_lock_dir "$1")" || return 0
+  tries=$(($2 * 5))
+  while end_lock_held "$lock"; do
+    [ "$tries" -gt 0 ] || return 1
+    tries=$((tries - 1))
+    sleep 0.2
+  done
+  return 0
+}

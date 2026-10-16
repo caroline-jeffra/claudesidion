@@ -27,13 +27,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/vault-maintain.sh",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/vault-push.sh",
-            "timeout": 30
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/session-end.sh --detach",
+            "timeout": 10
           }
         ]
       }

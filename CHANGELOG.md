@@ -14,6 +14,18 @@ are minor.
 
 ## [Unreleased]
 
+## [3.0.2] — 2026-10-17
+
+### Fixed
+
+- **Closing a session no longer reports `SessionEnd hook [...vault-push.sh] failed: Hook cancelled`.** Claude Code gives all SessionEnd hooks 1.5 seconds by default, and the plugin's own `timeout: 30` does not raise that budget. A push to GitHub over SSH takes about as long on its own, so whenever a session had changes the push was cut off after the local commit, and the next session start pushed it instead. The exit hook now hands the work to a detached background job and returns at once. The job runs in its own process group, so session teardown neither waits for it nor kills it. If it is killed anyway, the next session start still commits and pushes what it left.
+- **Index maintenance no longer races the session commit.** Claude Code runs an event's hooks in parallel, so `vault-maintain.sh` could still be rewriting frontmatter while `vault-push.sh` committed, which left the regenerated indexes for the next session. Both now run in order from one hook, `hooks/session-end.sh`.
+
+### Added
+
+- **A session-end lock** (`.git/dev-workbook-end.lock`, never committed). Because the exit work now finishes after Claude Code exits, a session started straight away waits up to 12 seconds for it to finish before committing leftovers or pulling. A second session ending at the same time waits its turn. A lock whose owner has died is taken over, not waited on.
+- **`tests/test-session-end.sh`** covers these cases: `--detach` returns well inside the budget, the background push lands even after the hook's process group gets SIGTERM, a failed background push is relayed to the next start, indexes go into the session commit, and the lock is waited on while live and taken over when stale.
+
 ## [3.0.1] — 2026-10-15
 
 ### Fixed

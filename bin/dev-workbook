@@ -59,7 +59,7 @@ def run_maintainer(args: list[str], *flags: str) -> int:
 
 
 START_HOOKS = ("vault-pull.sh", "vault-size-check.sh", "vault-condense-reminder.sh")
-END_HOOKS = ("vault-maintain.sh", "vault-push.sh")
+END_HOOKS = ("session-end.sh",)
 FORMATS = ("claude", "cursor", "plain")
 
 
