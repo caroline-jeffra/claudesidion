@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# SessionEnd hook: commit and push any pending vault changes once, at the end of the
-# session. This is the counterpart to vault-pull.sh (SessionStart): the vault is pulled once at
-# session start, written freely during the session, and flushed to the remote once here — the
-# skills themselves never commit or push.
+# Session-end step, run by session-end.sh: commit and push any pending vault changes once, at the
+# end of the session. This is the counterpart to vault-pull.sh (SessionStart): the vault is pulled
+# once at session start, written freely during the session, and flushed to the remote once here —
+# the skills themselves never commit or push.
 #
 # Fails open on every path: if anything is missing or goes wrong, exit 0 with no output so a hook
 # bug can never break the user's session teardown.

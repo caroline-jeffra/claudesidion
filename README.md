@@ -315,7 +315,10 @@ regenerates index notes, described below.
   session-start pull, and it's the only place the vault is pushed; if an earlier push failed, it also
   retries any unpushed commits. It commits a selected path list rather than everything in the vault,
   and refuses outright while a merge or rebase is in progress or HEAD is detached — see
-  "Vault version control" above.
+  "Vault version control" above. Maintenance, commit and push run in a detached background job,
+  because Claude Code allows exit hooks only 1.5 seconds and a push alone can take longer; a
+  session started before that job finishes waits for it. Anything it reports reaches the next
+  session start.
 
 ### When progress gets logged
 

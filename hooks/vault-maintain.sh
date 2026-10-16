@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# SessionEnd hook: refresh derived metadata and regenerate indexes for any vault
+# Session-end step: refresh derived metadata and regenerate indexes for any vault
 # workspace that opts in with a `.vault-config.json`.
 #
-# Runs BEFORE vault-push.sh so the regenerated indexes are committed in the same
-# commit as the notes that changed them.
+# session-end.sh runs it BEFORE vault-push.sh, so the regenerated indexes are
+# committed in the same commit as the notes that changed them.
 #
 # This never deletes or moves a file and never edits a note body — it only fills
 # in derived frontmatter and rewrites generated index notes. See
